@@ -1,0 +1,22 @@
+Package: discerner
+Type: Package
+Title: discerner: a method for differential analyses via hierarchical permutation tests
+Version: 0.99.0
+Author: Simone Tiberi [aut, cre], Mark D. Robinson [aut].
+Maintainer: Simone Tiberi <simone.tiberi@uzh.ch>
+Description: discerner is a general and flexible statistical method to perform, via hierarchical permutation tests, differential testing between two or more groups of distributions.
+biocViews: Genetics,
+  RNASeq, Sequencing, DifferentialExpression, GeneExpression, MultipleComparison,
+  Software, WorkflowStep, Transcription, StatisticalMethod, Visualization,
+  SingleCell, SingleCellWorkflow
+License: GPL (>= 3)
+Depends: R (>= 3.6.0)
+Imports: Rcpp
+Suggests: SingleCellExperiment, ggplot2
+LinkingTo: Rcpp, RcppArmadillo
+SystemRequirements: C++11
+VignetteBuilder: knitr
+RoxygenNote: 6.1.1
+ByteCompile: true
+URL: https://github.com/SimoneTiberi/discerner
+BugReports: https://github.com/SimoneTiberi/discerner/issues
