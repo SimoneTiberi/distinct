@@ -14,5 +14,5 @@ README.html
 inst/script/*
 !inst/script/extdata.Rmd
 vignettes/*
-!vignettes/discerner.Rmd
+!vignettes/distinct.Rmd
 !vignettes/References.bib

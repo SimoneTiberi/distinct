@@ -1,47 +1,78 @@
 #' Test for differential state between two groups of samples, based on scRNA-seq data.
 #'
-#' \code{discerner_test} tests for differential state between two groups of samples, based on scRNA-seq data.
+#' \code{distinct_test} tests for differential state between two groups of samples, based on scRNA-seq data.
 #' 
-#' 
-#' @param x a \code{\linkS4class{SingleCellExperiment}} object.
+#' @param x a \code{\linkS4class{SummarizedExperiment}} object.
 #' @param name_assays_expression a character ("counts" by default), 
 #' indicating the name of the assays(x) element which stores the expression data (i.e., assays(x)$name_assays_expression).
-#' @param name_colData_cluster a character ("cluster_id" by default), 
+#' @param name_cluster a character ("cluster_id" by default), 
 #' indicating the name of the colData(x) element which stores the cluster id of each cell (i.e., colData(x)$name_colData_cluster).
-#' @param name_colData_sample a character ("sample_id" by default), 
+#' @param name_sample a character ("sample_id" by default), 
 #' indicating the name of the colData(x) element which stores the sample id of each cell (i.e., colData(x)$name_colData_sample).
-#' @param name_colData_group a character ("group_id" by default), 
+#' @param name_group a character ("group_id" by default), 
 #' indicating the name of the colData(x) element which stores the group id of each cell (i.e., colData(x)$name_colData_group).
-#' @param perm_cells a boolean, indicating whether to permute cells (if TRUE, by default) or samples (if FALSE).
+#' @param name_metadata_experiment_info a character ("experiment_info" by default), 
+#' indicating the name of the metadata(x) element which stores the group id of each cell (i.e., metadata(x)$name_metadata_experiment_info).
 #' @param logarithm a boolean, indicating whether to use raw counts (if FALSE, by default) or log(counts + 1) (if TRUE).
 #' @param P  the number of permutations to use.
 #' @param N_breaks the number of breaks at which to evaluate the comulative density function.
 #' @param min_non_zero_cells_per_group the minimum number of non-zero cells in each group for a gene to be evaluated.
-#' 
 #' @return A \code{\linkS4class{data.frame}} object.
 #' @examples
-#' # discerner_test(x)
+#' library(HDCytoData)
+#' main = Weber_BCR_XL_sim_main_SE()
+#' main
+#' 
+#' library(diffcyt)
+#' # normalize data:
+#' main <- transformData(main, cofactor = 5)
+#' 
+#' # select all State markers:
+#' # sel_cols = colData(main)$marker_class == "state"
+#' # select 1 marker only:
+#' sel_cols = colData(main)$marker_name == "pNFkB"
+#' 
+#' library(SummarizedExperiment)
+#' # create a SummarizedExperiment object with seleceted columns, and inverting row-column structure:
+#' sce <- SummarizedExperiment(
+#'   assays = list(exprs = t(assays(main)$exprs[, sel_cols]) ), 
+#'   colData = rowData(main), 
+#'   rowData = colnames(main)[sel_cols], 
+#'   metadata = list(experiment_info =  metadata(main)$experiment_info ))
+#'   sce
+#'   
+#' # Perform differential analyses, within each cluster of cells, between conditions:
+#' res = distinct_test(
+#'   sce, 
+#'   name_assays_expression = "exprs",
+#'   name_cluster = "population_id",
+#'   name_group = "group_id",
+#'   name_sample = "sample_id",
+#'   P = 10^2, 
+#'   min_non_zero_cells_per_group = 0)
+#' 
+#' # Visualize results:
+#' head(res)
 #' 
 #' @author Simone Tiberi \email{simone.tiberi@uzh.ch}
 #' 
 #' @export
-discerner_test = function(x, 
+distinct_test = function(x, 
                          name_assays_expression = "counts",
                          name_cluster = "cluster_id",
                          name_sample = "sample_id",
                          name_group = "group_id",
                          name_metadata_experiment_info = "experiment_info",
-                         perm_cells = TRUE, 
-                         design = NULL, 
                          logarithm = FALSE, 
                          P = 10^3, 
                          N_breaks = 10, 
-                         min_non_zero_cells_per_group = 20,
-                         nCores = 1){
+                         min_non_zero_cells_per_group = 20){
   # x is a single cell experiment
   
   # check counts, clusters, samples, etc... are all available.
-  # make it general, maybe also working without a SingleCellExperiment structure?
+  # make it general, maybe also working without a SummarizedExperiment structure?
+  
+  # TODO: remove genes with only 0 counts from 'counts'
   
   # count matrix:
   sel = which(names(assays(x)) == name_assays_expression)
@@ -132,34 +163,29 @@ discerner_test = function(x,
     return("At least 2 groups should be provided")
   }
   
-  if(!perm_cells){
-    p_val = .Call(`_discerner_perm_samples_test`,
-                  logarithm, # if TRUE, use log2(counts + 1); if FALSE, use counts
-                  P, # number of permutations
-                  N_breaks, # number of breaks at which to evaluate the cdf
-                  cluster_ids_num, # ids of clusters (cell-population) for every cell
-                  n_clusters, # total number of clusters
-                  sample_ids_num, # ids of samples for every cell
-                  n_samples, # total number of samples
-                  group_ids_of_samples, # ids of groups (1 or 2) for every sample
-                  min_non_zero_cells_per_group, # min number of cells with > 0 expression in each group
-                  group_ids, # ids of groups (cell-population) for every cell
-                  counts)
-  }else{
-    p_val = .Call(`_discerner_perm_test`,
-                  logarithm, # if TRUE, use log2(counts + 1); if FALSE, use counts
-                  P, # number of permutations
-                  N_breaks, # number of breaks at which to evaluate the cdf
-                  cluster_ids_num, # ids of clusters (cell-population) for every cell
-                  n_clusters, # total number of clusters
-                  sample_ids_num, # ids of samples for every cell
-                  n_samples, # total number of samples
-                  group_ids_of_samples, # ids of groups (1 or 2) for every sample
-                  min_non_zero_cells_per_group, # min number of cells with > 0 expression in each group
-                  group_ids, # ids of groups (cell-population) for every cell
-                  counts,
-                  nCores)[[1]] # [[1]]: results returned as a 1 element list
+  # REMOVE WHEN implementing comparisons btw more than 2 groups:
+  if(n_groups > 2){
+    return("At most 2 groups should be provided: comparisons between more than 2 groups will be implemented (soon) in future releases.")
   }
+  
+  # TODO: print something before running C++ functions
+  
+  p_val = .Call(`_distinct_perm_test`,
+                logarithm, # if TRUE, use log2(counts + 1); if FALSE, use counts
+                P, # number of permutations
+                N_breaks, # number of breaks at which to evaluate the cdf
+                cluster_ids_num, # ids of clusters (cell-population) for every cell
+                n_clusters, # total number of clusters
+                sample_ids_num, # ids of samples for every cell
+                n_samples, # total number of samples
+                group_ids_of_samples, # ids of groups (1 or 2) for every sample
+                min_non_zero_cells_per_group, # min number of cells with > 0 expression in each group
+                group_ids, # ids of groups (cell-population) for every cell
+                counts,
+                1)[[1]] # [[1]]: results returned as a 1 element list
+  
+  # TODO: print something after running C++ functions
+  
   # set -1s to NA, so that we don't use these elements when adjusting p-values:
   p_val[ p_val == -1 ] = NA
   
@@ -189,5 +215,6 @@ discerner_test = function(x,
   res$p_adj.loc[is.na(res$p_adj.loc)] = 1
   res$p_adj.glb[is.na(res$p_adj.glb)] = 1
   
+  # TODO: return an object that can be accesses via "topTags", "gene" or similar(see PB objects):
   res
 }

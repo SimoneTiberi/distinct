@@ -1,0 +1,131 @@
+---
+title: "distinct: a method for differential analyses via hierarchical permutation tests"
+author:
+- name: Simone Tiberi
+  affiliation:
+  - &IMLS Institute for Molecular Life Sciences, University of Zurich, Switzerland
+  - &SIB SIB Swiss Institute of Bioinformatics, University of Zurich, Switzerland
+  email: simone.tiberi@uzh.ch
+- name: Mark D. Robinson
+  affiliation:
+  - *IMLS
+  - *SIB
+package: "`r BiocStyle::pkg_ver('distinct')`"
+date: "`r format(Sys.Date(), '%m/%d/%Y')`"
+bibliography: References.bib
+vignette: >
+  %\VignetteIndexEntry{distinct: a method for differential analyses via hierarchical permutation tests}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+  output: 
+  BiocStyle::html_document
+---
+
+---
+
+```{r setup, echo=FALSE, results="hide"}
+knitr::opts_chunk$set(tidy=FALSE, cache=TRUE,
+                      dev="png",
+                      message=TRUE, error=FALSE, warning=TRUE)
+```
+
+# Introduction
+*distinct* is a statistical method to perform differential testing between two or more groups of distributions; differential testing is performed via non-parametric permutation tests on the cumulative distribution functions (cdfs) of each sample.
+*distinct* is a general and flexible tool: due to its fully non-parametric nature, which makes no assumptions on how the data was generated, it can be applied to a variety of datasets.
+It is particularly suitable to perform differential state analyses on single cell data (i.e., differential analyses within sub-populations of cells), such as single cell RNA sequencing (scRNA-seq) and high-dimensional flow or mass cytometry (HDCyto) data.
+
+At present, covariates are not allowed, and only 2-group comparisons are implemented.
+In future releases (i.e., soon), we will allow for covariates and for differential testing between more than 2 groups.
+
+A pre-print will follow in the coming months.
+
+To access the R code used in the vignettes, type:
+```{r vignettes, eval=FALSE} 
+browseVignettes("distinct")
+```
+
+Questions relative to *distinct* should be either written to the *[Bioconductor support site](https://support.bioconductor.org)*, tagging the question with "distinct", or reported as a new issue at *[BugReports](https://github.com/SimoneTiberi/distinct/issues)*.
+
+To cite *distinct*, type:
+```{r citation} 
+citation("distinct")
+```
+
+## Bioconductor installation
+*distinct* is available on [Bioconductor](https://www.bioconductor.org/packages/release/bioc/html/distinct.html) and can be installed with the command:
+```{r Bioconductor_installation, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly=TRUE))
+  install.packages("BiocManager")
+BiocManager::install("distinct")
+```
+
+## Devel installation from github
+To install the package from github, use `devtools` (available [here](https://github.com/hadley/devtools)):
+```{r github_installation, eval=FALSE}
+devtools::install_github("SimoneTiberi/distinct")
+```
+
+To install the package jointly with its vignette remove `--no-build-vignettes` from `build_opts`:
+```{r github_installation_2, eval=FALSE}
+devtools::install_github("SimoneTiberi/distinct",
+                         build_opts = c("--no-resave-data", "--no-manual"))
+```
+
+# Differential State analysis
+
+Load *distinct*
+```{r load_distinct, message=FALSE}
+library(distinct)
+```
+
+## Input data
+Load example data.
+```{r load-example-data}
+library(HDCytoData)
+main = Weber_BCR_XL_sim_main_SE()
+main
+```
+
+Preprocess example data.
+```{r preprocess-example-data}
+library(diffcyt)
+# normalize data:
+main <- transformData(main, cofactor = 5)
+
+# select State markers only:
+sel_cols = colData(main)$marker_class == "state"
+
+library(SummarizedExperiment)
+# create a SummarizedExperiment object with seleceted columns, and inverting row-column structure:
+sce <- SummarizedExperiment(
+  assays = list(exprs = t(assays(main)$exprs[, sel_cols]) ), 
+  colData = rowData(main), 
+  rowData = colnames(main)[sel_cols], 
+  metadata = list(experiment_info =  metadata(main)$experiment_info )
+)
+sce
+```
+
+## Differential analyses within sub-populations of cells
+Perform differential analyses, within each cluster of cells, between conditions.
+```{r differential-analyses}
+res = distinct_test(
+  sce, 
+  name_assays_expression = "exprs",
+  name_cluster = "population_id",
+  name_group = "group_id",
+  name_sample = "sample_id",
+  P = 10^2, 
+  min_non_zero_cells_per_group = 0)
+```
+
+## Visualize results
+Visualize results table.
+```{r visualize-results}
+head(res)
+```
+
+# Session info
+```{r sessionInfo}
+sessionInfo()
+```
