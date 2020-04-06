@@ -10,7 +10,6 @@ biocViews: Genetics,
   Software, Transcription, StatisticalMethod, Visualization,
   SingleCell
 License: GPL (>= 3)
-Depends: R
 Imports: Rcpp, stats, SummarizedExperiment, S4Vectors
 Suggests: ggplot2, knitr, HDCytoData, diffcyt, testthat
 LinkingTo: Rcpp, RcppArmadillo
