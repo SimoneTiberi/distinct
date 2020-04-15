@@ -17,7 +17,7 @@ vignette: >
   %\VignetteIndexEntry{distinct: a method for differential analyses via hierarchical permutation tests}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-  output: 
+output: 
   BiocStyle::html_document
 ---
 
@@ -25,17 +25,18 @@ vignette: >
 
 ```{r setup, echo=FALSE, results="hide"}
 knitr::opts_chunk$set(tidy=FALSE, cache=TRUE,
-                      dev="png",
-                      message=TRUE, error=FALSE, warning=TRUE)
+dev="png",
+message=TRUE, error=FALSE, warning=TRUE)
 ```
 
 # Introduction
-*distinct* is a statistical method to perform differential testing between two or more groups of distributions; differential testing is performed via non-parametric permutation tests on the cumulative distribution functions (cdfs) of each sample.
+*distinct* is a statistical method to perform differential testing between two or more groups of distributions; differential testing is performed via hierarchical non-parametric permutation tests on the cumulative distribution functions (cdfs) of each sample.
+While most methods for differential expression target differences in the mean abundance between conditions, *distinct*, by comparing full cdfs, identifies, both, differential patterns involving changes in the mean, as well as more subtle variations that do not involve the mean (e.g., unimodal vs. bi-modal distributions with the same mean).
 *distinct* is a general and flexible tool: due to its fully non-parametric nature, which makes no assumptions on how the data was generated, it can be applied to a variety of datasets.
-It is particularly suitable to perform differential state analyses on single cell data (i.e., differential analyses within sub-populations of cells), such as single cell RNA sequencing (scRNA-seq) and high-dimensional flow or mass cytometry (HDCyto) data.
+It is particularly suitable to perform differential state analyses on single cell data (e.g., differential analyses within sub-populations of cells), such as single cell RNA sequencing (scRNA-seq) and high-dimensional flow or mass cytometry (HDCyto) data.
 
 At present, covariates are not allowed, and only 2-group comparisons are implemented.
-In future releases (i.e., soon), we will allow for covariates and for differential testing between more than 2 groups.
+In future releases, we will allow for covariates and for differential testing between more than 2 groups.
 
 A pre-print will follow in the coming months.
 
@@ -44,10 +45,10 @@ To access the R code used in the vignettes, type:
 browseVignettes("distinct")
 ```
 
-Questions relative to *distinct* should be either written to the *[Bioconductor support site](https://support.bioconductor.org)*, tagging the question with "distinct", or reported as a new issue at *[BugReports](https://github.com/SimoneTiberi/distinct/issues)*.
+Questions relative to *distinct* should be either written to the *[Bioconductor support site](https://support.bioconductor.org)*, tagging the question with "distinct", or reported as a new issue at *[BugReports](https://github.com/SimoneTiberi/distinct/issues)* (preferred choice).
 
 To cite *distinct*, type:
-```{r citation} 
+```{r citation, eval=FALSE} 
 citation("distinct")
 ```
 
@@ -72,57 +73,90 @@ devtools::install_github("SimoneTiberi/distinct",
 ```
 
 # Differential State analysis
+Differential state analyses aim at investigating differential patterns between conditions in sub-populations of cells.
+To use *distinct* one needs data from two or more groups of samples (i.e., experimental conditions), with at least 2 samples (i.e., biological replicates) per group.
+Given a single-cell RNA-sequencing (scRNA-seq) or a high dimensional flow or mass cytometry (HDCyto) dataset, cells need first to be clustered in groups via some form of clustering algorithms; *distinct* is then applied to identify differential patterns between groups, within each cluster of cells.
 
-Load *distinct*
+## Input data
+Load the example dataset, consisting of a subset of 6 samples (3 individuals observed across 2 conditions) and 100 genes selected from the `Kang18_8vs8()` object of the *muscData* package.
+```{r load-example-data, message = FALSE}
+data("Kang_subset", package = "distinct")
+Kang_subset
+```
+
+Columns `ind` and `stim` of the `colData` indicate the indivual id and the experimental condition (control or stimulated) of each cell, while column `sample_id` shows the sample id, needed for the differential anlyses.
+Column `cell` represents the cell type, which defines the clustering structure of cells: differential testing between conditions is performed separately for each cluster of cells.
+Note that, if cell clustering label was unknown, we would need to cluster cells into groups via some clustering algorithm.
+```{r visualize colData}
+colData(Kang_subset)
+```
+
+The experimental design compares two groups (stim vs ctrl) with 3 biological replicates each.
+```{r visualize experimental design}
+metadata(Kang_subset)$experiment_info
+```
+
+Visually inspect the data, via tSNE plots, coloured by cell-type.
+```{r t-SNE plot, message = FALSE}
+library(scater)
+plotTSNE(Kang_subset, colour_by = "cell")
+```
+
+## Differential analyses within sub-populations of cells
+Load *distinct*.
 ```{r load_distinct, message=FALSE}
 library(distinct)
 ```
 
-## Input data
-Load example data.
-```{r load-example-data}
-library(HDCytoData)
-main = Weber_BCR_XL_sim_main_SE()
-main
-```
-
-Preprocess example data.
-```{r preprocess-example-data}
-library(diffcyt)
-# normalize data:
-main <- transformData(main, cofactor = 5)
-
-# select State markers only:
-sel_cols = colData(main)$marker_class == "state"
-
-library(SummarizedExperiment)
-# create a SummarizedExperiment object with seleceted columns, and inverting row-column structure:
-sce <- SummarizedExperiment(
-  assays = list(exprs = t(assays(main)$exprs[, sel_cols]) ), 
-  colData = rowData(main), 
-  rowData = colnames(main)[sel_cols], 
-  metadata = list(experiment_info =  metadata(main)$experiment_info )
-)
-sce
-```
-
-## Differential analyses within sub-populations of cells
-Perform differential analyses, within each cluster of cells, between conditions.
+Perform differential state testing between conditions.
+Parameter `name_assays_expression` specifies the input data (counts) in `assays(x)`, while `name_cluster`, `name_group`, `name_sample` define the column names of `colData(x)` containing the clustering of cells (cell), the grouping of samples (stim) and the id of individual samples (sample_id).
+As today *distinct* does not accept sparce matrices:
 ```{r differential-analyses}
+set.seed(61217)
 res = distinct_test(
-  sce, 
-  name_assays_expression = "exprs",
-  name_cluster = "population_id",
-  name_group = "group_id",
+  x = Kang_subset, 
+  name_assays_expression = "counts",
+  name_cluster = "cell",
+  name_group = "stim",
   name_sample = "sample_id",
-  P = 10^2, 
-  min_non_zero_cells_per_group = 0)
+  P = 10^3, 
+  min_non_zero_cells = 20)
 ```
 
-## Visualize results
-Visualize results table.
+Results are reported as a `data.frame`, where columns `gene` and `cluster_id` contain the gene and cell-cluster name, while `p_val`, `p_adj.loc` and `p_adj.glb` report the raw p-values, locally and globally adjusted p-values, via Benjamini and Hochberg (BH) correction.
+In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each cluster separately, while in globally adjusted p-values (`p_adj.glb`) BH correction is performed to the results from all clusters.
 ```{r visualize-results}
 head(res)
+```
+
+## Visualizing results:
+Visualize the concordance of differential results between cell clusters.
+We select as significant genes with globally adjusted p-value below 0.01.
+```{r UpsetR plot}
+library(UpSetR)
+res_by_cluster = split( ifelse(res$p_adj.glb < 0.01, 1, 0), res$cluster_id)
+upset(data.frame(do.call(cbind, res_by_cluster)))
+```
+
+Violin plots of significant genes in `Dendritic cells` cluster.
+```{r plotExpression}
+# select cluster of cells:
+cluster = "Dendritic cells"
+sel_cluster = res$cluster_id == cluster
+sel_column = Kang_subset$cell == cluster
+
+# select significant genes:
+sel_genes = res$p_adj.glb < 0.01
+genes = as.character(res$gene[sel_cluster & sel_genes])
+
+# make violin plots:
+library(scater)
+plotExpression(Kang_subset[,sel_column],
+                     features = genes, exprs_values = "logcounts",
+                     log2_values = FALSE,
+                     x = "sample_id", colour_by = "stim", ncol = 3) +
+        guides(fill = guide_legend(override.aes = list(size = 5, alpha = 1))) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 # Session info

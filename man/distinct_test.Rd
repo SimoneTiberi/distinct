@@ -6,12 +6,11 @@
 \usage{
 distinct_test(x, name_assays_expression = "counts",
   name_cluster = "cluster_id", name_sample = "sample_id",
-  name_group = "group_id",
-  name_metadata_experiment_info = "experiment_info", logarithm = FALSE,
-  P = 10^3, N_breaks = 10, min_non_zero_cells_per_group = 20)
+  name_group = "group_id", logarithm = FALSE, P = 10^3,
+  N_breaks = 10, min_non_zero_cells = 20)
 }
 \arguments{
-\item{x}{a \code{\linkS4class{SummarizedExperiment}} object.}
+\item{x}{a \code{\linkS4class{SummarizedExperiment}} or a \code{\linkS4class{SingleCellExperiment}} object.}
 
 \item{name_assays_expression}{a character ("counts" by default), 
 indicating the name of the assays(x) element which stores the expression data (i.e., assays(x)$name_assays_expression).}
@@ -25,55 +24,35 @@ indicating the name of the colData(x) element which stores the sample id of each
 \item{name_group}{a character ("group_id" by default), 
 indicating the name of the colData(x) element which stores the group id of each cell (i.e., colData(x)$name_colData_group).}
 
-\item{name_metadata_experiment_info}{a character ("experiment_info" by default), 
-indicating the name of the metadata(x) element which stores the group id of each cell (i.e., metadata(x)$name_metadata_experiment_info).}
-
 \item{logarithm}{a boolean, indicating whether to use raw counts (if FALSE, by default) or log(counts + 1) (if TRUE).}
 
 \item{P}{the number of permutations to use.}
 
 \item{N_breaks}{the number of breaks at which to evaluate the comulative density function.}
 
-\item{min_non_zero_cells_per_group}{the minimum number of non-zero cells in each group for a gene to be evaluated.}
+\item{min_non_zero_cells}{the minimum number of non-zero cells in each cluster for a gene to be evaluated.}
 }
 \value{
 A \code{\linkS4class{data.frame}} object.
+Columns `gene` and `cluster_id` contain the gene and cell-cluster name, while `p_val`, `p_adj.loc` and `p_adj.glb` report the raw p-values, locally and globally adjusted p-values, via Benjamini and Hochberg (BH) correction.
+In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each cluster separately, while in globally adjusted p-values (`p_adj.glb`) BH correction is performed to the results from all clusters.
 }
 \description{
-\code{distinct_test} tests for differential state between two groups of samples, based on scRNA-seq data.
+\code{distinct_test} tests for differential state between two groups of samples.
 }
 \examples{
-library(HDCytoData)
-main = Weber_BCR_XL_sim_main_SE()
-main
+data("Kang_subset", package = "distinct")
+Kang_subset
 
-library(diffcyt)
-# normalize data:
-main <- transformData(main, cofactor = 5)
-
-# select all State markers:
-# sel_cols = colData(main)$marker_class == "state"
-# select 1 marker only:
-sel_cols = colData(main)$marker_name == "pNFkB"
-
-library(SummarizedExperiment)
-# create a SummarizedExperiment object with seleceted columns, and inverting row-column structure:
-sce <- SummarizedExperiment(
-  assays = list(exprs = t(assays(main)$exprs[, sel_cols]) ), 
-  colData = rowData(main), 
-  rowData = colnames(main)[sel_cols], 
-  metadata = list(experiment_info =  metadata(main)$experiment_info ))
-  sce
-  
-# Perform differential analyses, within each cluster of cells, between conditions:
+set.seed(61217)
 res = distinct_test(
-  sce, 
-  name_assays_expression = "exprs",
-  name_cluster = "population_id",
-  name_group = "group_id",
+  x = Kang_subset, 
+  name_assays_expression = "counts",
+  name_cluster = "cell",
+  name_group = "stim",
   name_sample = "sample_id",
-  P = 10^2, 
-  min_non_zero_cells_per_group = 0)
+  P = 10^3, 
+  min_non_zero_cells = 20)
 
 # Visualize results:
 head(res)

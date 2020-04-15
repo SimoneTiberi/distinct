@@ -8,7 +8,7 @@
 \description{
 \packageDescription{distinct}
 
-Questions relative to distinct should be either written to the \href{https://support.bioconductor.org}{Bioconductor support site}, tagging the question with 'distinct', or reported as a new issue at \href{https://github.com/SimoneTiberi/distinct/issues}{BugReports}.
+Questions relative to distinct should be either written to the \href{https://support.bioconductor.org}{Bioconductor support site}, tagging the question with 'distinct', or reported as a new issue at \href{https://github.com/SimoneTiberi/distinct/issues}{BugReports} (preferred choice).
 
 To access the vignettes, type: \code{browseVignettes("distinct")}.
 }

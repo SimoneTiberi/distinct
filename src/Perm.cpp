@@ -10,7 +10,6 @@ using namespace arma;
 // [0,n) as required by the STL algorithm
 inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
-
 // [[Rcpp::export]]
 List perm_test(bool const logarithm,                            // if TRUE, use log2(counts + 1); if FALSE, use counts
                 unsigned int const P,                             // number of permutations
@@ -20,7 +19,7 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
                 arma::vec sample_ids,                             // ids of samples for every cell
                 unsigned int const n_samples,                     // total number of samples
                 arma::vec group_ids_of_samples,                   // ids of groups (1 or 2) for every sample
-                double const min_counts_per_group,                // min number of cells with > 0 expression in each group
+                double const min_non_zero_cells,                  // min number of cells with > 0 expression in each cluster to consider the gene for testing
                 arma::vec group_ids,                              // ids of groups (cell-population) for every cell
                 arma::mat& counts,                                // count matrix (rows = genes, cols = cells)
                 unsigned int const nCores )                       // total number of cores used
@@ -30,11 +29,10 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
   //omp_set_num_threads(nCores);
   
   /* Global variables */
-  bool keep_gene;
   unsigned int n_genes = counts.n_rows, n_cells_overall = counts.n_cols;
   arma::uvec samples_in_group_A = arma::find( group_ids_of_samples == 1);
   arma::uvec samples_in_group_B = arma::find( group_ids_of_samples == 2);
-  double sA, sB, mn, len_out;
+  double s, mn, len_out;
   unsigned int n_samples_A = samples_in_group_A.n_elem;                        // number of samples in group A
   unsigned int n_samples_B = samples_in_group_B.n_elem;                        // number of samples in group B
   arma::mat res(n_genes,n_clusters); res.fill(-1);                             // array of p-values
@@ -55,16 +53,6 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
   unsigned int b, p, n_cells,  sample; //, core;
   arma::uvec sample_has_cells(n_samples);
   for (unsigned int cl_id = 0; cl_id < n_clusters; ++cl_id) { // loop over clusters
-    // select data belonging to the first group:
-    arma::uvec ids_A = arma::find( group_ids == 1 && cluster_ids == cl_id );
-    unsigned int n_A = ids_A.n_elem;
-    arma::vec counts_one_gene_A(n_A);
-    
-    // select data belonging to the second group:
-    arma::uvec ids_B = arma::find( group_ids == 2 && cluster_ids == cl_id );
-    unsigned int n_B = ids_B.n_elem;
-    arma::vec counts_one_gene_B(n_B);
-    
     // select data belonging to both groups:
     arma::uvec ids_both = arma::find( cluster_ids == cl_id );
     unsigned int n_both = ids_both.n_elem;
@@ -112,37 +100,21 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
     for (unsigned int gene = 0; gene < n_genes; ++gene) {
       /* Determine if there are sufficient counts */
       counts_gene = counts.row(gene).t();
-      sA = 0.0;
-      sB = 0.0;
-      for (b=0 ; b<n_A ; b++) {
-        counts_one_gene_A(b) = counts_gene( ids_A(b) );
-        if ( counts_one_gene_A(b) > 0 ) {
-          sA += 1.0;
+      
+      s = 0.0;
+      for (b=0 ; b<n_both ; b++) {
+        counts_one_gene(b) = counts_gene( ids_both(b) );
+        if ( counts_one_gene(b) > 0 ) {
+          s += 1.0;
         }
-      }
-      for (b=0 ; b<n_B ; b++) {
-        counts_one_gene_B(b) = counts_gene( ids_B(b) );
-        if ( counts_one_gene_B(b) > 0 ) {
-          sB += 1.0;
-        }
-      }
-      keep_gene=false; 
-      if (sA>=min_counts_per_group) {
-        if (sB>=min_counts_per_group){
-          keep_gene = true;
-        }
-      }
+      } 
       
       /* */
-      if (keep_gene) {
+      if (s >= min_non_zero_cells) {
         //res(gene,cl_id) = 0.0;
         res(gene,cl_id) = 1.0;
         // if keep_gene is false (0), res(gene,cl_id) will be -1 (filled above).
         // if keep_gene is true (1),res(gene,cl_id) will be set at 1 (the observed value) and values added below (and then devided by P+1).
-        
-        for (b=0 ; b<n_both ; b++) {
-          counts_one_gene(b) = counts_gene( ids_both(b) );
-        } 
         
         if (logarithm==1) {
           b = counts_one_gene.n_elem;
