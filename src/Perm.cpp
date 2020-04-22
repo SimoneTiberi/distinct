@@ -12,17 +12,16 @@ inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
 // [[Rcpp::export]]
 List perm_test(bool const logarithm,                            // if TRUE, use log2(counts + 1); if FALSE, use counts
-                unsigned int const P,                             // number of permutations
-                unsigned int const N_breaks,                      // number of breaks at which to evaluate the cdf
-                arma::vec cluster_ids,                            // ids of clusters (cell-population) for every cell
-                unsigned int const n_clusters,                    // total number of clusters
-                arma::vec sample_ids,                             // ids of samples for every cell
-                unsigned int const n_samples,                     // total number of samples
-                arma::vec group_ids_of_samples,                   // ids of groups (1 or 2) for every sample
-                double const min_non_zero_cells,                  // min number of cells with > 0 expression in each cluster to consider the gene for testing
-                arma::vec group_ids,                              // ids of groups (cell-population) for every cell
-                arma::mat& counts,                                // count matrix (rows = genes, cols = cells)
-                unsigned int const nCores )                       // total number of cores used
+               unsigned int const P,                             // number of permutations
+               unsigned int const N_breaks,                      // number of breaks at which to evaluate the cdf
+               arma::vec cluster_ids,                            // ids of clusters (cell-population) for every cell
+               unsigned int const n_clusters,                    // total number of clusters
+               arma::vec sample_ids,                             // ids of samples for every cell
+               unsigned int const n_samples,                     // total number of samples
+               arma::vec group_ids_of_samples,                   // ids of groups (1 or 2) for every sample
+               double const min_non_zero_cells,                  // min number of cells with > 0 expression in each cluster to consider the gene for testing
+               arma::mat& counts,                                // count matrix (rows = genes, cols = cells)
+               unsigned int const nCores )                       // total number of cores used
 {
   
   /* Set the number of cores used */
@@ -85,16 +84,8 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
       sample_has_cells(sample) = any(sample_ids_one_cl==sample);
     }
     
-    /* Parallel code, blocked for now */ 
-    //    # pragma omp parallel for shared( cl_id, ids_A, ids_B, ids_both, chunk, counts, n_A, n_B, n_both, seq0, sample_has_cells, n_samples_A, n_samples_B, sample_ids_one_cl, PERM, res ) private(b, p, sample)
-    //    for (core=0 ; core<nCores ; core++) {
-    //      unsigned int start_gene = chunk(core,0);
-    //      unsigned int finish_gene = chunk(core,1);
-    //      unsigned int gene;
-    //      for (gene=start_gene ; gene<=finish_gene ; gene++) {
-    
     /* Flag to interrupt the code from R: */
-    // Rcpp::checkUserInterrupt();
+    Rcpp::checkUserInterrupt();
     
     /* gene loop */ 
     for (unsigned int gene = 0; gene < n_genes; ++gene) {
@@ -124,52 +115,45 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
         }
         
         /* CDF grid */ 
-        mn      = counts_one_gene.min();
+        mn = counts_one_gene.min();
         len_out = ( counts_one_gene.max() - mn ) / (N_breaks + 1.0);
         for (b=0 ; b<N_breaks ; b++) {
           breaks(b) = mn + len_out*seq0(b) ;
         }
         
         cdf_A.fill(0.0);
-        for (sample=0 ; sample<n_samples_A ; sample++ ) {
-          if ( (sample_has_cells(sample))==1 ) {
-            arma::uvec tmp1 = find( sample_ids_one_cl == sample );
-            tmp2 = tmp1.n_elem;
-            arma::vec counts_one_gene_one_sample(tmp2);
-            for (b=0 ; b<tmp2 ; b++) {
-              counts_one_gene_one_sample(b) = counts_one_gene( tmp1(b) );
-            }
-            for (b=0 ; b<N_breaks ; b++) {
-              tmp3 =0.0; 
-              for (p=0 ; p<tmp2 ; p++) {
-                if (breaks(b)>counts_one_gene_one_sample(p)) {
-                  tmp3 += 1.0;
-                }
-              }
-              tmp3 /= tmp2*n_samples_A;
-              cdf_A(b) += tmp3;
-            }
-          }
-        }
-        
         cdf_B.fill(0.0);
-        for (sample = n_samples_A; sample < n_samples; sample++) {
-          if ( (sample_has_cells(sample))==1 ) {
-            arma::uvec tmp1 = find( sample_ids_one_cl == sample );
-            tmp2 = tmp1.n_elem;
-            arma::vec counts_one_gene_one_sample(tmp2);
-            for (b=0 ; b<tmp2 ; b++) {
+        for (sample=0 ; sample<n_samples ; sample++ ) {
+          if ( (sample_has_cells(sample))==1 ) { // check that samples have at least 1 cell
+            arma::uvec tmp1 = find( sample_ids_one_cl == sample ); // find the cells associated to the sample `sample`
+            tmp2 = tmp1.n_elem; // counts number of cells
+            arma::vec counts_one_gene_one_sample(tmp2); // create a vector to store these cells
+            for (b=0 ; b<tmp2 ; b++) { // store cells of sample `sample`
               counts_one_gene_one_sample(b) = counts_one_gene( tmp1(b) );
             }
-            for (b=0 ; b<N_breaks ; b++) {
-              tmp3 = 0.0;
-              for (p=0 ; p<tmp2 ; p++) {
-                if (breaks(b)>counts_one_gene_one_sample(p)) {
-                  tmp3 += 1.0;
+            if ( (group_ids_of_samples(sample)) == 1.0) { // if sample belongs to group A, add to cdf_A
+              for (b=0 ; b<N_breaks ; b++) { // loop over the number of breaks of the CDF
+                tmp3 =0.0; 
+                for (p=0 ; p<tmp2 ; p++) { // for every break, compute the cdf: how often the break is > counts.
+                  if (breaks(b)>counts_one_gene_one_sample(p)) {
+                    tmp3 += 1.0;
+                  }
                 }
+                tmp3 /= tmp2*n_samples_A; // divide by the number of cells (tmp2) to get the cdf, and n_samples_A to get avg cdf in the group
+                cdf_A(b) += tmp3;
               }
-              tmp3/= tmp2*n_samples_B;
-              cdf_B(b) += tmp3;
+            }
+            else { // if sample belongs to group B, add to cdf_B
+              for (b=0 ; b<N_breaks ; b++) { // loop over the number of breaks of the CDF
+                tmp3 =0.0; 
+                for (p=0 ; p<tmp2 ; p++) { // for every break, compute the cdf: how often the break is > counts.
+                  if (breaks(b)>counts_one_gene_one_sample(p)) {
+                    tmp3 += 1.0;
+                  }
+                }
+                tmp3/= tmp2*n_samples_B;
+                cdf_B(b) += tmp3;
+              }
             }
           }
         }
@@ -180,7 +164,6 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
           T_obs += fabs( cdf_A(b) - cdf_B(b) )  ;
         }
         
-        
         /* Permutation testing */
         T_perm.fill(0.0);
         for (p=0 ; p<P ; p++) {
@@ -190,45 +173,38 @@ List perm_test(bool const logarithm,                            // if TRUE, use 
           }
           
           cdf_A.fill(0.0);
-          for (sample=0 ; sample<n_samples_A ; sample++ ) {
-            if ( (sample_has_cells(sample))==1 ) {
-              arma::uvec tmp1 = find( sample_ids_one_cl == sample );
-              tmp2 = tmp1.n_elem;
-              arma::vec counts_one_gene_one_sample(tmp2);
-              for (b=0 ; b<tmp2 ; b++) {
-                counts_one_gene_one_sample(b) = counts_one_gene_permuted( tmp1(b) );
-              }
-              for (b=0 ; b<N_breaks ; b++) {
-                tmp3 = 0.0;
-                for (p_tmp=0 ; p_tmp<tmp2 ; p_tmp++) {
-                  if (breaks(b)>counts_one_gene_one_sample(p_tmp)) {
-                    tmp3 += 1.0;
-                  }
-                }
-                tmp3 /= tmp2*n_samples_A;
-                cdf_A(b) += tmp3;
-              }
-            }
-          }
-          
           cdf_B.fill(0.0);
-          for (sample = n_samples_A; sample < n_samples; sample++) {
-            if ( (sample_has_cells(sample))==1 ) {
-              arma::uvec tmp1 = find( sample_ids_one_cl == sample );
-              tmp2 = tmp1.n_elem;
-              arma::vec counts_one_gene_one_sample(tmp2);
-              for (b=0 ; b<tmp2 ; b++) {
+          for (sample=0 ; sample<n_samples ; sample++ ) {
+            if ( (sample_has_cells(sample))==1 ) { // check that samples have at least 1 cell
+              arma::uvec tmp1 = find( sample_ids_one_cl == sample ); // find the cells associated to the sample `sample`
+              tmp2 = tmp1.n_elem; // counts number of cells
+              arma::vec counts_one_gene_one_sample(tmp2); // create a vector to store these cells
+              for (b=0 ; b<tmp2 ; b++) { // store cells of sample `sample`
                 counts_one_gene_one_sample(b) = counts_one_gene_permuted( tmp1(b) );
               }
-              for (b=0 ; b<N_breaks ; b++) {
-                tmp3 = 0.0;
-                for (p_tmp=0 ; p_tmp<tmp2 ; p_tmp++) {
-                  if (breaks(b)>counts_one_gene_one_sample(p_tmp)) {
-                    tmp3 += 1.0;
+              if ( (group_ids_of_samples(sample)) == 1.0) { // if sample belongs to group A, add to cdf_A
+                for (b=0 ; b<N_breaks ; b++) { // loop over the number of breaks of the CDF
+                  tmp3 =0.0; 
+                  for (p_tmp=0 ; p_tmp<tmp2 ; p_tmp++) { // for every break, compute the cdf: how often the break is > counts.
+                    if (breaks(b)>counts_one_gene_one_sample(p_tmp)) {
+                      tmp3 += 1.0;
+                    }
                   }
+                  tmp3 /= tmp2*n_samples_A; // divide by the number of cells (tmp2) to get the cdf, and n_samples_A to get avg cdf in the group
+                  cdf_A(b) += tmp3;
                 }
-                tmp3 /= tmp2*n_samples_B;
-                cdf_B(b) += tmp3;
+              }
+              else { // if sample belongs to group B, add to cdf_B
+                for (b=0 ; b<N_breaks ; b++) { // loop over the number of breaks of the CDF
+                  tmp3 =0.0; 
+                  for (p_tmp=0 ; p_tmp<tmp2 ; p_tmp++) { // for every break, compute the cdf: how often the break is > counts.
+                    if (breaks(b)>counts_one_gene_one_sample(p_tmp)) {
+                      tmp3 += 1.0;
+                    }
+                  }
+                  tmp3/= tmp2*n_samples_B;
+                  cdf_B(b) += tmp3;
+                }
               }
             }
           }

@@ -122,10 +122,11 @@ distinct_test = function(x,
   
   # select experimental info:
   experiment_info = unique(data.frame(sample_id = sample_ids, 
-                                      group_id = group_ids) )
+                                      group_id = group_ids, 
+                                      stringsAsFactors = FALSE) )
   
   # sample ids from experiment_info:
-  levels(sample_ids) = factor(experiment_info$sample_id)
+  sample_ids = factor(sample_ids, levels = experiment_info$sample_id)
   n_samples = nlevels(sample_ids)
   sample_ids_num = as.numeric(sample_ids)-1
   
@@ -150,7 +151,6 @@ distinct_test = function(x,
     return(NULL)
   }
   
-  # TODO: print something before running C++ functions:
   message("Data loaded, starting differential testing")
   
   p_val = .Call(`_distinct_perm_test`,
@@ -163,7 +163,6 @@ distinct_test = function(x,
                 n_samples, # total number of samples
                 group_ids_of_samples, # ids of groups (1 or 2) for every sample
                 min_non_zero_cells, # min number of cells with > 0 expression in each group
-                group_ids, # ids of groups (cell-population) for every cell
                 counts,
                 1)[[1]] # [[1]]: results returned as a 1 element list
   
