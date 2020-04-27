@@ -1,7 +1,7 @@
 Package: distinct
 Type: Package
 Title: distinct: a method for differential analyses via hierarchical permutation tests
-Version: 1.0.0
+Version: 1.1.0
 Author: Simone Tiberi [aut, cre], Mark D. Robinson [aut].
 Maintainer: Simone Tiberi <simone.tiberi@uzh.ch>
 Description: distinct is a statistical method to perform differential testing between two or more groups of distributions; 
