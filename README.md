@@ -9,6 +9,12 @@ In future releases (i.e., soon), we will allow for covariates and for differenti
 
 A pre-print will follow in the coming months.
 
+***
+
+**`distinct` is still work in progress. Major updates are expected until summer.**
+
+***
+
 ## Bioconductor installation 
 `distinct` is available on [Bioconductor](https://bioconductor.org/packages/distinct) and can be installed with the command:
 ``` r
