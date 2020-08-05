@@ -4,33 +4,55 @@
 \alias{distinct_test}
 \title{Test for differential state between two groups of samples, based on scRNA-seq data.}
 \usage{
-distinct_test(x, name_assays_expression = "counts",
-  name_cluster = "cluster_id", name_sample = "sample_id",
-  name_group = "group_id", logarithm = FALSE, P = 10^3,
-  N_breaks = 10, min_non_zero_cells = 20)
+distinct_test(
+  x,
+  name_assays_expression = "logcounts",
+  name_cluster = "cluster_id",
+  name_sample = "sample_id",
+  design,
+  column_to_test = 2,
+  P = 100,
+  P_2 = 500,
+  P_3 = 2000,
+  P_4 = 10000,
+  N_breaks = 25,
+  min_non_zero_cells = 20,
+  n_cores = 1
+)
 }
 \arguments{
 \item{x}{a \code{\linkS4class{SummarizedExperiment}} or a \code{\linkS4class{SingleCellExperiment}} object.}
 
-\item{name_assays_expression}{a character ("counts" by default), 
-indicating the name of the assays(x) element which stores the expression data (i.e., assays(x)$name_assays_expression).}
+\item{name_assays_expression}{a character ("logcounts" by default), 
+indicating the name of the assays(x) element which stores the expression data (i.e., assays(x)$name_assays_expression).
+We strongly encourage using normalized data, such as counts per million (CPM) or log2-CPM (e.g., 'logcounts' as created via \code{scater::logNormCounts}).
+In case additional covariates are provided (e.g., batch effects), we highly recommend using log-normalized data, such as log2-CPM (e.g., 'logcounts' as created via \code{scater::logNormCounts}).}
 
 \item{name_cluster}{a character ("cluster_id" by default), 
-indicating the name of the colData(x) element which stores the cluster id of each cell (i.e., colData(x)$name_colData_cluster).}
+indicating the name of the colData(x) element which stores the cluster id of each cell (i.e., colData(x)$name_cluster).}
 
 \item{name_sample}{a character ("sample_id" by default), 
-indicating the name of the colData(x) element which stores the sample id of each cell (i.e., colData(x)$name_colData_sample).}
+indicating the name of the colData(x) element which stores the sample id of each cell (i.e., colData(x)$name_sample).}
 
-\item{name_group}{a character ("group_id" by default), 
-indicating the name of the colData(x) element which stores the group id of each cell (i.e., colData(x)$name_colData_group).}
+\item{design}{a \code{\linkS4class{matrix}} or \code{\linkS4class{data.frame}} with the design matrix of the study (e.g., built via model.matrix(~batches), 
+design must contain one row per sample, while columns include intercept, group and eventual covariates such as batches.
+Row names of design must indicate the sample ids, and correspond to the names in colData(x)$name_sample.}
 
-\item{logarithm}{a boolean, indicating whether to use raw counts (if FALSE, by default) or log(counts + 1) (if TRUE).}
+\item{column_to_test}{indicates the column(s) of the design one wants to test (do not include the intercept).}
 
-\item{P}{the number of permutations to use.}
+\item{P}{the number of permutations to use on all gene-cluster combinations.}
+
+\item{P_2}{the number of permutations to use, when a (raw) p-value is < 0.1 (500 by default).}
+
+\item{P_3}{the number of permutations to use, when a (raw) p-value is < 0.01 (2,000 by default).}
+
+\item{P_4}{the number of permutations to use, when a (raw) p-value is < 0.001 (10,000 by default).}
 
 \item{N_breaks}{the number of breaks at which to evaluate the comulative density function.}
 
-\item{min_non_zero_cells}{the minimum number of non-zero cells in each cluster for a gene to be evaluated.}
+\item{min_non_zero_cells}{the minimum number of non-zero cells (across all samples) in each cluster for a gene to be evaluated.}
+
+\item{n_cores}{the number of cores to parallelize the tasks on (parallelization is at the cluster level: each cluster is parallelized on a thread).}
 }
 \value{
 A \code{\linkS4class{data.frame}} object.
@@ -41,22 +63,39 @@ In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each clus
 \code{distinct_test} tests for differential state between two groups of samples.
 }
 \examples{
+# load the input data:
 data("Kang_subset", package = "distinct")
 Kang_subset
+
+# create the design of the study:
+samples = metadata(Kang_subset)$experiment_info$sample_id
+group = metadata(Kang_subset)$experiment_info$stim
+design = model.matrix(~group)
+# rownames of the design must indicate sample ids:
+rownames(design) = samples
+design
+
+# The group we would like to test for is in the second column of the design, therefore we will specify: column_to_test = 2
 
 set.seed(61217)
 res = distinct_test(
   x = Kang_subset, 
-  name_assays_expression = "counts",
+  name_assays_expression = "logcounts",
   name_cluster = "cell",
-  name_group = "stim",
-  name_sample = "sample_id",
-  P = 10^3, 
-  min_non_zero_cells = 20)
+  design = design,
+  column_to_test = 2,
+  min_non_zero_cells = 20,
+  n_cores = 2)
 
-# Visualize results:
-head(res)
+# Visualize significant results:
+top_results(res)
 
+# Visualize significant results from a specified cluster of cells:
+top_results(res, cluster = "Dendritic cells")
+
+}
+\seealso{
+\code{\link{plot_cdfs}}, \code{\link{plot_densities}}
 }
 \author{
 Simone Tiberi \email{simone.tiberi@uzh.ch}

@@ -1,2 +1,8 @@
+Changes in version 1.0.1:
++ substantial speed-up in `distinct_test` (~7 times faster);
++ parallel computing introduced;
++ modelling of covariates introduced, via a design matrix;
++ two new functions to visualize results: `plot_cdfs` and `plot_densities`.
+
 Changes in version 1.0.0:
 + Submitted to Bioconductor

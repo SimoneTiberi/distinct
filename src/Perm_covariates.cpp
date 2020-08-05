@@ -10,7 +10,7 @@ using namespace arma;
 // [0,n) as required by the STL algorithm
 inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
-unsigned int perm_one_gene(arma::vec const& breaks, 
+unsigned int perm_one_gene_covariates(arma::vec const& breaks, 
                            arma::mat& cdf_A, 
                            arma::mat& cdf_B,
                            unsigned int const& n_samples,
@@ -117,9 +117,8 @@ unsigned int perm_one_gene(arma::vec const& breaks,
   return res;
 }
 
-
 // [[Rcpp::export]]
-List perm_test(unsigned int const& P,                             // number of permutations for all gene-cluster combinations
+List perm_test_covariates(unsigned int const& P,                             // number of permutations for all gene-cluster combinations
                unsigned int const& P_2,                           // number of permutations when p < 0.1
                unsigned int const& P_3,                           // number of permutations when p < 0.01
                unsigned int const& P_4,                           // number of permutations when p < 0.001
@@ -130,12 +129,15 @@ List perm_test(unsigned int const& P,                             // number of p
                unsigned int const& n_samples,                     // total number of samples
                arma::vec const& group_ids_of_samples,                   // ids of groups (1 or 2) for every sample
                double const& min_non_zero_cells,                  // min number of cells with > 0 expression in each cluster to consider the gene for testing
-               arma::sp_mat const& counts)                                // count matrix (rows = genes, cols = cells)
+               arma::sp_mat const& counts,                                // count matrix (rows = genes, cols = cells)
+               arma::mat& design)                       // design, excluding group
 {
   arma::vec T_perm(P), T_perm_2(P_2 - P), T_perm_3(P_3 - P_2), T_perm_4(P_4 - P_3);
   
+  arma::colvec y, coef, residuals; // colvectors needed to compute lm residuals
+  
   /* Global variables */
-  unsigned int tmp2, cell, b, sample, p, n_cells;
+  unsigned int tmp2, cell, b, sample, p, n_cells, K = design.n_cols;
   
   double T_obs, p_val;
   
@@ -216,11 +218,19 @@ List perm_test(unsigned int const& P,                             // number of p
     }
     PERM_4 = Rcpp::as<arma::umat>(PERMUTATIONS_4);
     
-    
-    
     sample_has_cells.fill(0);
     for (sample=0 ; sample<n_samples ; sample++) {
       sample_has_cells(sample) = any(sample_ids_one_cl==sample);
+    }
+    
+    // design has k cols (number of covariates) and n_sample rows
+    // create an X_design matrix with k cols and N_cells rows
+    arma::mat X_design(n_cells, K);
+    // compute design matrix: select for every cell the corresponding sample's design row via sample_ids_one_cl[cell]
+    for (unsigned int cell = 0; cell < n_cells; ++cell) {
+      for(unsigned int k = 0; k < K; k++){
+        X_design(cell, k) = design(sample_ids_one_cl(cell), k);
+      }
     }
     
     /* Flag to interrupt the code from R: */
@@ -244,8 +254,15 @@ List perm_test(unsigned int const& P,                             // number of p
       
       /* */
       if (s >= min_non_zero_cells) {
-        // if keep_gene is false (0), res(gene,cl_id) will be -1 (filled above).
-        // if keep_gene is true (1),res(gene,cl_id) will be set at 1 (the observed value) and values added below (and then devided by P+1).
+        // create an arma::colvec element y containing the expression data for each cell
+        //arma::colvec y(counts_one_gene.begin(), n, false); // reuses memory, avoids extra copy
+        y = counts_one_gene;
+        // fit model y ~ X:
+        coef = arma::solve(X_design, y);
+        // residuals:
+        // remove all, except the 1st column (intercept!), add the intercept back:
+        residuals = y - X_design*coef; // + X_design_arma.col(0) * coef[0];
+        counts_one_gene = residuals;
         
         /* CDF grid */ 
         mn = counts_one_gene.min();
@@ -322,7 +339,7 @@ List perm_test(unsigned int const& P,                             // number of p
         }
         
         // run 100 permutations on all gene-cluster combinations
-        tmp_res = 1 + perm_one_gene(breaks, 
+        tmp_res = 1 + perm_one_gene_covariates(breaks, 
                                     cdf_A, 
                                     cdf_B,
                                     n_samples,
@@ -343,7 +360,7 @@ List perm_test(unsigned int const& P,                             // number of p
         
         if( p_val <= 0.1 ){ // if p_val < 0.1, use 10 * perm
           if(P_2 > P){
-            tmp_res += perm_one_gene(breaks, 
+            tmp_res += perm_one_gene_covariates(breaks, 
                                      cdf_A, 
                                      cdf_B,
                                      n_samples,
@@ -365,7 +382,7 @@ List perm_test(unsigned int const& P,                             // number of p
           
           if( p_val <= 0.01 ){ // if p_val < 0.01, use 100 * perm
             if(P_3 > P_2){
-              tmp_res += perm_one_gene(breaks, 
+              tmp_res += perm_one_gene_covariates(breaks, 
                                        cdf_A, 
                                        cdf_B,
                                        n_samples,
@@ -387,7 +404,7 @@ List perm_test(unsigned int const& P,                             // number of p
             
             if( p_val <= 0.001 ){ // if p_val < 0.001, use 1,000 * perm
               if(P_4 > P_3){
-                tmp_res += perm_one_gene(breaks, 
+                tmp_res += perm_one_gene_covariates(breaks, 
                                          cdf_A, 
                                          cdf_B,
                                          n_samples,

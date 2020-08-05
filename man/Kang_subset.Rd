@@ -51,28 +51,6 @@ Subset from the `Kang18_8vs8()` object of the \code{muscData} package.
 #
 # Kang_subset = sce
 # save(Kang_subset, file = "Kang_subset.RData")
-
-
-
-####################
-# example usage:
-####################
-# data("Kang_subset", package = "distinct")
-#
-# perform differential state analyses via distinct:
-# set.seed(61217)
-# res = distinct_test(
-#   x = Kang_subset, 
-#   name_assays_expression = "counts",
-#   name_cluster = "cell",
-#   name_group = "stim",
-#   name_sample = "sample_id",
-#   P = 10^3, 
-#   min_non_zero_cells = 20)
-#
-# Visualize results:
-# head(res)
- 
 }
 \seealso{
 \code{\link{distinct_test}}

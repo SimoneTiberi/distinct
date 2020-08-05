@@ -9,29 +9,12 @@ In future releases (i.e., soon), we will allow for covariates and for differenti
 
 A pre-print will follow in the coming months.
 
-***
-
-**`distinct` is still work in progress. Major updates are expected until summer.**
-
-***
-
 ## Bioconductor installation 
 `distinct` is available on [Bioconductor](https://bioconductor.org/packages/distinct) and can be installed with the command:
 ``` r
 if (!requireNamespace("BiocManager", quietly=TRUE))
     install.packages("BiocManager")
 BiocManager::install("distinct")
-```
-
-## Devel installation from github
-To install the package from github, use `devtools` (available [here](https://github.com/hadley/devtools)):
-``` r
-devtools::install_github("SimoneTiberi/distinct")
-```
-
-To install the package jointly with its vignette remove `--no-build-vignettes` from `build_opts`:
-``` r
-devtools::install_github("SimoneTiberi/distinct", build_opts = c("--no-resave-data", "--no-manual"))
 ```
 
 ## Vignette
