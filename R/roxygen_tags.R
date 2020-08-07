@@ -6,7 +6,6 @@
 #' @import SingleCellExperiment
 #' @importFrom SummarizedExperiment assays
 #' @importFrom SummarizedExperiment colData
-#' @importFrom S4Vectors metadata
 #' @importFrom Matrix Matrix
 #' @importFrom Matrix rowSums
 #' @importFrom Matrix t

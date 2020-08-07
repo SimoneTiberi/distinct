@@ -2,7 +2,7 @@
 #'
 #' \code{distinct_test} tests for differential state between two groups of samples.
 #' 
-#' @param x a \code{\linkS4class{SummarizedExperiment}} or a \code{\linkS4class{SingleCellExperiment}} object.
+#' @param x a \code{linkS4class{SummarizedExperiment}} or a \code{linkS4class{SingleCellExperiment}} object.
 #' @param name_assays_expression a character ("logcounts" by default), 
 #' indicating the name of the assays(x) element which stores the expression data (i.e., assays(x)$name_assays_expression).
 #' We strongly encourage using normalized data, such as counts per million (CPM) or log2-CPM (e.g., 'logcounts' as created via \code{scater::logNormCounts}).
@@ -31,8 +31,8 @@
 #' Kang_subset
 #' 
 #' # create the design of the study:
-#' samples = metadata(Kang_subset)$experiment_info$sample_id
-#' group = metadata(Kang_subset)$experiment_info$stim
+#' samples = Kang_subset@metadata$experiment_info$sample_id
+#' group = Kang_subset@metadata$experiment_info$stim
 #' design = model.matrix(~group)
 #' # rownames of the design must indicate sample ids:
 #' rownames(design) = samples

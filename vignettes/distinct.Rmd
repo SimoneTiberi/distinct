@@ -94,7 +94,7 @@ colData(Kang_subset)
 
 The experimental design compares two groups (stim vs ctrl) with 3 biological replicates each.
 ```{r visualize experimental design}
-metadata(Kang_subset)$experiment_info
+Kang_subset@metadata$experiment_info
 ```
 
 ## Differential analyses within sub-populations of cells
@@ -105,8 +105,8 @@ library(distinct)
 
 Create the design of the study:
 ```{r create_design}
-samples = metadata(Kang_subset)$experiment_info$sample_id
-group = metadata(Kang_subset)$experiment_info$stim
+samples = Kang_subset@metadata$experiment_info$sample_id
+group = Kang_subset@metadata$experiment_info$stim
 design = model.matrix(~group)
 # rownames of the design must indicate sample ids:
 rownames(design) = samples

@@ -21,7 +21,7 @@ distinct_test(
 )
 }
 \arguments{
-\item{x}{a \code{\linkS4class{SummarizedExperiment}} or a \code{\linkS4class{SingleCellExperiment}} object.}
+\item{x}{a \code{linkS4class{SummarizedExperiment}} or a \code{linkS4class{SingleCellExperiment}} object.}
 
 \item{name_assays_expression}{a character ("logcounts" by default), 
 indicating the name of the assays(x) element which stores the expression data (i.e., assays(x)$name_assays_expression).
@@ -68,8 +68,8 @@ data("Kang_subset", package = "distinct")
 Kang_subset
 
 # create the design of the study:
-samples = metadata(Kang_subset)$experiment_info$sample_id
-group = metadata(Kang_subset)$experiment_info$stim
+samples = Kang_subset@metadata$experiment_info$sample_id
+group = Kang_subset@metadata$experiment_info$stim
 design = model.matrix(~group)
 # rownames of the design must indicate sample ids:
 rownames(design) = samples
