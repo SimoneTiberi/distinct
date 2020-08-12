@@ -25,8 +25,8 @@ output:
 
 ```{r setup, echo=FALSE, results="hide"}
 knitr::opts_chunk$set(tidy=FALSE, cache=TRUE,
-dev="png",
-message=TRUE, error=FALSE, warning=TRUE)
+                      dev="png",
+                      message=TRUE, error=FALSE, warning=TRUE)
 ```
 
 # Introduction
@@ -58,18 +58,6 @@ citation("distinct")
 if (!requireNamespace("BiocManager", quietly=TRUE))
   install.packages("BiocManager")
 BiocManager::install("distinct")
-```
-
-## Devel installation from github
-To install the package from github, use `devtools` (available [here](https://github.com/hadley/devtools)):
-```{r github_installation, eval=FALSE}
-devtools::install_github("SimoneTiberi/distinct")
-```
-
-To install the package jointly with its vignette remove `--no-build-vignettes` from `build_opts`:
-```{r github_installation_2, eval=FALSE}
-devtools::install_github("SimoneTiberi/distinct",
-                         build_opts = c("--no-resave-data", "--no-manual"))
 ```
 
 # Differential State analysis
@@ -117,23 +105,41 @@ Perform differential state testing between conditions.
 Parameter `name_assays_expression` specifies the input data (logcounts) in `assays(x)`, while `name_cluster` and `name_sample` define the column names of `colData(x)` containing the clustering of cells (cell) and the id of individual samples (sample_id).
 The group we would like to test for is in the second column of the design, therefore we will specify: column_to_test = 2.
 
+Note that the sample names in `colData(x)$name_sample` have to be the same ones as those in `rownames(design)` (although not necessarily in the same order).
+```{r check_sample_names}
+rownames(design)
+
+unique(colData(Kang_subset)$sample_id)
+```
+
+In order to obtain a finer ranking for the most significant genes, if computational resources are available, we encourage users to increase `P_4` (i.e., the number of permutations when a raw p-value is < 0.001) and set `P_4 = 20,000` (by default  `P_4 = 10,000`).
+
 We strongly encourage using normalized data, such as counts per million (CPM) or log2-CPM (e.g.,   `logcounts` as created via `scater::logNormCounts`).
 ```{r differential-analyses}
 set.seed(61217)
 
-res = distinct_test(
-  x = Kang_subset, 
-  name_assays_expression = "logcounts",
-  name_cluster = "cell",
-  name_sample = "sample_id",
-  design = design,
-  column_to_test = 2,
-  min_non_zero_cells = 20,
-  n_cores = 2)
+res = distinct_test(x = Kang_subset, 
+                    name_assays_expression = "logcounts",
+                    name_cluster = "cell",
+                    name_sample = "sample_id",
+                    design = design,
+                    column_to_test = 2,
+                    min_non_zero_cells = 20,
+                    n_cores = 2)
 ```
 
 Results are reported as a `data.frame`, where columns `gene` and `cluster_id` contain the gene and cell-cluster name, while `p_val`, `p_adj.loc` and `p_adj.glb` report the raw p-values, locally and globally adjusted p-values, via Benjamini and Hochberg (BH) correction.
 In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each cluster separately, while in globally adjusted p-values (`p_adj.glb`) BH correction is performed to the results from all clusters.
+
+We can further compute the fold change (FC) and log2-FC between groups.
+To compute FCs, use normalized data, such as CPMs; do not use logarithm transformed data (e.g., logcounts).
+```{r compute-log2_FC}
+res = log2_FC(res = res,
+              x = Kang_subset, 
+              name_assays_expression = "cpm",
+              name_group = "stim",
+              name_cluster = "cell")
+```
 
 We can visualize significant results via `top_results` function.
 ```{r visualize-results}
@@ -143,6 +149,18 @@ head(top_results(res))
 We can also visualize significant results for a specific cluster of cells.
 ```{r visualize-results-one-cluster}
 top_results(res, cluster = "Dendritic cells")
+```
+
+By default, results from 'top_results' are sorted by (globally) adjusted p-value; they can also be sorted by log2-FC.
+```{r visualize-results-one-cluster-sort-by-FC}
+top_results(res, cluster = "Dendritic cells", sort_by = "log2FC")
+```
+
+We can further filter results to visualize significant up- or down-regulated results only.
+Here we visualize the down-regulated gene-cluster results; i.e., results with lower expression in 'ctlr' group compared to 'stim'.
+```{r visualize-results-down}
+top_results(res, up_down = "down",
+            cluster = "Dendritic cells")
 ```
 
 ## Handling covariates and batch effects
@@ -167,28 +185,43 @@ Again, we specify the column of the design to be tested via `column_to_test = 2`
 ```{r differential-analyses-with-batches}
 set.seed(61217)
 
-res_batches = distinct_test(
-  x = Kang_subset, 
-  name_assays_expression = "logcounts",
-  name_cluster = "cell",
-  name_sample = "sample_id",
-  design = design,
-  column_to_test = 2,
-  min_non_zero_cells = 20,
-  n_cores = 2)
+res_batches = distinct_test(x = Kang_subset, 
+                            name_assays_expression = "logcounts",
+                            name_cluster = "cell",
+                            name_sample = "sample_id",
+                            design = design,
+                            column_to_test = 2,
+                            min_non_zero_cells = 20,
+                            n_cores = 2)
 
 head(top_results(res_batches))
 
 top_results(res, cluster = "Dendritic cells")
 ```
 
-## Visualizing results:
-Visualize the concordance of differential results between cell clusters.
-We select as significant genes with globally adjusted p-value below 0.01.
-```{r UpsetR plot}
-library(UpSetR)
-res_by_cluster = split( ifelse(res$p_adj.glb < 0.01, 1, 0), res$cluster_id)
-upset(data.frame(do.call(cbind, res_by_cluster)), nsets = 10, nintersects = 20)
+## Visualizing results
+Density plot of one significant gene (ISG15) in `Dendritic cells` cluster.
+```{r plot_densitied}
+plot_densities(x = Kang_subset,
+               gene = "ISG15",
+               cluster = "Dendritic cells",
+               name_assays_expression = "logcounts",
+               name_cluster = "cell",
+               name_sample = "sample_id",
+               name_group = "stim")
+```
+
+CDF plot of one significant gene (ISG15) in `Dendritic cells` cluster.
+```{r plot_cdfs}
+plot_cdfs(x = Kang_subset,
+          gene = "ISG15",
+          
+          
+          cluster = "Dendritic cells",
+          name_assays_expression = "logcounts",
+          name_cluster = "cell",
+          name_sample = "sample_id",
+          name_group = "stim")
 ```
 
 Violin plots of significant genes in `Dendritic cells` cluster.
@@ -205,35 +238,20 @@ genes = as.character(res$gene[sel_cluster & sel_genes])
 # make violin plots:
 library(scater)
 plotExpression(Kang_subset[,sel_column],
-                     features = genes, exprs_values = "logcounts",
-                     log2_values = FALSE,
-                     x = "sample_id", colour_by = "stim", ncol = 3) +
-        guides(fill = guide_legend(override.aes = list(size = 5, alpha = 1))) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+               features = genes, exprs_values = "logcounts",
+               log2_values = FALSE,
+               x = "sample_id", colour_by = "stim", ncol = 3) +
+  guides(fill = guide_legend(override.aes = list(size = 5, alpha = 1))) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-Density plot of one significant gene in `Dendritic cells` cluster.
-```{r plot_densitied}
-plot_densities(x = Kang_subset,
-            gene = genes[1],
-            cluster = "Dendritic cells",
-            name_assays_expression = "logcounts",
-            name_cluster = "cell",
-            name_sample = "sample_id",
-            name_group = "stim")
+Visualize the concordance of differential results between cell clusters.
+We select as significant genes with globally adjusted p-value below 0.01.
+```{r UpsetR plot}
+library(UpSetR)
+res_by_cluster = split( ifelse(res$p_adj.glb < 0.01, 1, 0), res$cluster_id)
+upset(data.frame(do.call(cbind, res_by_cluster)), nsets = 10, nintersects = 20)
 ```
-
-CDF plot of one significant gene in `Dendritic cells` cluster.
-```{r plot_cdfs}
-plot_cdfs(x = Kang_subset,
-                 gene = genes[1],
-                 cluster = "Dendritic cells",
-                 name_assays_expression = "logcounts",
-                 name_cluster = "cell",
-                 name_sample = "sample_id",
-                 name_group = "stim")
-```
-
 # Session info
 ```{r sessionInfo}
 sessionInfo()

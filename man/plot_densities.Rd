@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_densities.R
 \name{plot_densities}
 \alias{plot_densities}
-\title{Test for differential state between two groups of samples, based on scRNA-seq data.}
+\title{Plot sample-specific densities.}
 \usage{
 plot_densities(
   x,

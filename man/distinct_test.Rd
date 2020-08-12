@@ -46,7 +46,9 @@ Row names of design must indicate the sample ids, and correspond to the names in
 
 \item{P_3}{the number of permutations to use, when a (raw) p-value is < 0.01 (2,000 by default).}
 
-\item{P_4}{the number of permutations to use, when a (raw) p-value is < 0.001 (10,000 by default).}
+\item{P_4}{the number of permutations to use, when a (raw) p-value is < 0.001 (10,000 by default).
+In order to obtain a finer ranking for the most significant genes,
+if computational resources are available, we encourage users to set P_4 = 20,000.}
 
 \item{N_breaks}{the number of breaks at which to evaluate the comulative density function.}
 
@@ -75,6 +77,12 @@ design = model.matrix(~group)
 rownames(design) = samples
 design
 
+# Note that the sample names in `colData(x)$name_sample` have to be the same ones as those in `rownames(design)`.
+rownames(design)
+unique(SingleCellExperiment::colData(Kang_subset)$sample_id)
+
+# In order to obtain a finer ranking for the most significant genes, if computational resources are available, we encourage users to increase P_4 (i.e., the number of permutations when a raw p-value is < 0.001) and set P_4 = 20,000 (by default P_4 = 10,000).
+
 # The group we would like to test for is in the second column of the design, therefore we will specify: column_to_test = 2
 
 set.seed(61217)
@@ -87,15 +95,47 @@ res = distinct_test(
   min_non_zero_cells = 20,
   n_cores = 2)
 
+# We can optionally add the fold change (FC) and log2-FC between groups:
+res = log2_FC(res = res,
+  x = Kang_subset, 
+  name_assays_expression = "cpm",
+  name_group = "stim",
+  name_cluster = "cell")
+
 # Visualize significant results:
-top_results(res)
+head(top_results(res))
 
 # Visualize significant results from a specified cluster of cells:
 top_results(res, cluster = "Dendritic cells")
 
+# By default, results from 'top_results' are sorted by (globally) adjusted p-value;
+# they can also be sorted by log2-FC:
+top_results(res, cluster = "Dendritic cells", sort_by = "log2FC")
+
+# Visualize significant UP-regulated genes only:
+top_results(res, up_down = "UP",
+  cluster = "Dendritic cells")
+
+# Plot density and cdf for gene 'ISG15' in cluster 'Dendritic cells'.
+plot_densities(x = Kang_subset,
+  gene = "ISG15",
+  cluster = "Dendritic cells",
+  name_assays_expression = "logcounts",
+  name_cluster = "cell",
+  name_sample = "sample_id",
+  name_group = "stim")
+ 
+ plot_cdfs(x = Kang_subset,
+   gene = "ISG15",
+   cluster = "Dendritic cells",
+   name_assays_expression = "logcounts",
+   name_cluster = "cell",
+   name_sample = "sample_id",
+   name_group = "stim")
+
 }
 \seealso{
-\code{\link{plot_cdfs}}, \code{\link{plot_densities}}
+\code{\link{plot_cdfs}}, \code{\link{plot_densities}}, \code{\link{log2_FC}}, \code{\link{top_results}}
 }
 \author{
 Simone Tiberi \email{simone.tiberi@uzh.ch}

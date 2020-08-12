@@ -1,3 +1,7 @@
+Changes in version 1.0.3:
++ FC and log2-FC calculation added (via 'log2_FC' function);
++ 'top_results' function edited to sort results by p-value and log2-FC.
+
 Changes in version 1.0.1:
 + substantial speed-up in `distinct_test` (~7 times faster);
 + parallel computing introduced;

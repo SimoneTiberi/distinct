@@ -2,9 +2,16 @@
 % Please edit documentation in R/top_results.R
 \name{top_results}
 \alias{top_results}
-\title{Test for differential state between two groups of samples, based on scRNA-seq data.}
+\title{Filter significant results.}
 \usage{
-top_results(res, cluster = "all", significance = 0.01, global = TRUE)
+top_results(
+  res,
+  cluster = "all",
+  significance = 0.01,
+  global = TRUE,
+  up_down = "both",
+  sort_by = "p_adj.glb"
+)
 }
 \arguments{
 \item{res}{a \code{\linkS4class{data.frame}} with results as returned from \code{\link{distinct_test}}.}
@@ -15,6 +22,11 @@ Results from all clusters are returned by default ("all").}
 \item{significance}{numeric, results with adjusted p-value < significance will be returned.}
 
 \item{global}{logical indicating whether to filter results according to p_adj.glb (when TRUE), or p_adj.loc (when FALSE).}
+
+\item{up_down}{a character indicating whether to return: all results ("both" or "BOTH"), only up-regulated results ("up" or "UP") or down-regulated results ("down" or "DOWN").
+In `res`, a FC > 1 (or log2FC > 0) indicates up-regulation of group1 (compared to group2); while a FC < 1 (or log2FC < 0) indicates down-regulation of group1 (compared to group2).
+#' @param up_down a character indicating how results should be sorted.
+Results can be sorted by globally adjusted p-value ("p_adj.glb", default choice), locally adjusted p-value ("p_adj.loc"), raw p-value ("p_val") or (log2)fold-change ("FC" or "log2FC").}
 }
 \value{
 A \code{\linkS4class{data.frame}} object.
@@ -25,39 +37,11 @@ In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each clus
 \code{top_results} returns the significant results obtained via \code{\link{distinct_test}}.
 }
 \examples{
-# load the input data:
-data("Kang_subset", package = "distinct")
-Kang_subset
-
-# create the design of the study:
-samples = Kang_subset@metadata$experiment_info$sample_id
-group = Kang_subset@metadata$experiment_info$stim
-design = model.matrix(~group)
-# rownames of the design must indicate sample ids:
-rownames(design) = samples
-design
-
-# The group we would like to test for is in the second column of the design, therefore we will specify: column_to_test = 2
-
-set.seed(61217)
-res = distinct_test(
-  x = Kang_subset, 
-  name_assays_expression = "logcounts",
-  name_cluster = "cell",
-  design = design,
-  column_to_test = 2,
-  min_non_zero_cells = 20,
-  n_cores = 2)
-
-# Visualize significant results:
-top_results(res)
-
-# Visualize significant results from a specified cluster of cells:
-top_results(res, cluster = "Dendritic cells")
+# Check the examples of 'distinct_test'
 
 }
 \seealso{
-\code{\link{plot_cdfs}}, \code{\link{plot_densities}}
+\code{\link{distinct_test}}, \code{\link{log2_FC}}
 }
 \author{
 Simone Tiberi \email{simone.tiberi@uzh.ch}

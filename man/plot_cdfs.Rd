@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_cdfs.R
 \name{plot_cdfs}
 \alias{plot_cdfs}
-\title{Test for differential state between two groups of samples, based on scRNA-seq data.}
+\title{Plot sample-specific CDFs.}
 \usage{
 plot_cdfs(
   x,

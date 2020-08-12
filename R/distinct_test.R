@@ -19,6 +19,8 @@
 #' @param P_2  the number of permutations to use, when a (raw) p-value is < 0.1 (500 by default).
 #' @param P_3  the number of permutations to use, when a (raw) p-value is < 0.01 (2,000 by default).
 #' @param P_4  the number of permutations to use, when a (raw) p-value is < 0.001 (10,000 by default).
+#' In order to obtain a finer ranking for the most significant genes,
+#' if computational resources are available, we encourage users to set P_4 = 20,000.
 #' @param N_breaks the number of breaks at which to evaluate the comulative density function.
 #' @param min_non_zero_cells the minimum number of non-zero cells (across all samples) in each cluster for a gene to be evaluated.
 #' @param n_cores the number of cores to parallelize the tasks on (parallelization is at the cluster level: each cluster is parallelized on a thread).
@@ -38,6 +40,12 @@
 #' rownames(design) = samples
 #' design
 #' 
+#' # Note that the sample names in `colData(x)$name_sample` have to be the same ones as those in `rownames(design)`.
+#' rownames(design)
+#' unique(SingleCellExperiment::colData(Kang_subset)$sample_id)
+#' 
+#' # In order to obtain a finer ranking for the most significant genes, if computational resources are available, we encourage users to increase P_4 (i.e., the number of permutations when a raw p-value is < 0.001) and set P_4 = 20,000 (by default P_4 = 10,000).
+#' 
 #' # The group we would like to test for is in the second column of the design, therefore we will specify: column_to_test = 2
 #' 
 #' set.seed(61217)
@@ -50,15 +58,47 @@
 #'   min_non_zero_cells = 20,
 #'   n_cores = 2)
 #' 
+#' # We can optionally add the fold change (FC) and log2-FC between groups:
+#' res = log2_FC(res = res,
+#'   x = Kang_subset, 
+#'   name_assays_expression = "cpm",
+#'   name_group = "stim",
+#'   name_cluster = "cell")
+#' 
 #' # Visualize significant results:
-#' top_results(res)
+#' head(top_results(res))
 #' 
 #' # Visualize significant results from a specified cluster of cells:
 #' top_results(res, cluster = "Dendritic cells")
 #' 
+#' # By default, results from 'top_results' are sorted by (globally) adjusted p-value;
+#' # they can also be sorted by log2-FC:
+#' top_results(res, cluster = "Dendritic cells", sort_by = "log2FC")
+#' 
+#' # Visualize significant UP-regulated genes only:
+#' top_results(res, up_down = "UP",
+#'   cluster = "Dendritic cells")
+#' 
+#' # Plot density and cdf for gene 'ISG15' in cluster 'Dendritic cells'.
+#' plot_densities(x = Kang_subset,
+#'   gene = "ISG15",
+#'   cluster = "Dendritic cells",
+#'   name_assays_expression = "logcounts",
+#'   name_cluster = "cell",
+#'   name_sample = "sample_id",
+#'   name_group = "stim")
+#'  
+#'  plot_cdfs(x = Kang_subset,
+#'    gene = "ISG15",
+#'    cluster = "Dendritic cells",
+#'    name_assays_expression = "logcounts",
+#'    name_cluster = "cell",
+#'    name_sample = "sample_id",
+#'    name_group = "stim")
+#' 
 #' @author Simone Tiberi \email{simone.tiberi@uzh.ch}
 #' 
-#' @seealso \code{\link{plot_cdfs}}, \code{\link{plot_densities}}
+#' @seealso \code{\link{plot_cdfs}}, \code{\link{plot_densities}}, \code{\link{log2_FC}}, \code{\link{top_results}}
 #' 
 #' @export
 distinct_test = function(x, 
@@ -91,6 +131,12 @@ distinct_test = function(x,
     is.numeric(n_cores), length(n_cores) == 1L
   )
   
+  # check for NA's:
+  if(any(is.na(design)) | any(is.null(design)) | any(is.nan(design))){
+    message("'design' contains NA, NULL or NaN values")
+    return(NULL)
+  }
+  
   if(!is.fullrank(design)){ # if the matrix is NOT full rank:
     message("'design' is not full rank.")
     return(NULL)
@@ -113,6 +159,11 @@ distinct_test = function(x,
     return(NULL)
   }
   counts = assays(x)[[sel]]
+  
+  if(any(is.na(counts)) | any(is.null(counts)) ){
+    message("'assays(x)[[name_assays_expression]]' contains NA or NULL values")
+    return(NULL)
+  }
   # remove rows with 0 counts:
   counts = counts[ rowSums(counts > 0) > 0, ]
   
@@ -147,6 +198,14 @@ distinct_test = function(x,
     return(NULL)
   }
   sample_ids = factor(colData(x)[[sel]])
+  
+  nas = is.na(sample_ids) | is.null(sample_ids) | is.nan(sample_ids) | is.na(cluster_ids) | is.null(cluster_ids) | is.nan(cluster_ids)
+  if(any(nas)){
+    message("NAs, NULL or NaN found in 'colData(x)[name_sample]' and/or 'colData(x)[name_cluster]': removing corresponding cells")
+    sample_ids  = sample_ids[!nas]
+    cluster_ids_num = cluster_ids_num[!nas]
+    counts = counts[,!nas]
+  }
   
   # check if ALL samples names from rownames(design) are present in sample_ids
   # maybe allow for samples to be present in sample_ids but not in rownames(design) ?

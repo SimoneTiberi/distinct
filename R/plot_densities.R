@@ -1,4 +1,4 @@
-#' Test for differential state between two groups of samples, based on scRNA-seq data.
+#' Plot sample-specific densities.
 #'
 #' \code{plot_densities} returns a \code{\link{ggplot}} object
 #' with the sample-specific density estimates, for a specified cluster and gene.

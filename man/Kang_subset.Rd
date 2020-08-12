@@ -21,6 +21,7 @@ Subset from the `Kang18_8vs8()` object of the \code{muscData} package.
 # library(scater)
 # sce = computeLibraryFactors(sce)
 # sce = logNormCounts(sce)
+# cpm(sce) <- calculateCPM(sce)
 # 
 # Select genes with at least 1000 non-zero cells:
 # sce = sce[ rowSums(assays(sce)$counts > 0) >= 1000, ]
