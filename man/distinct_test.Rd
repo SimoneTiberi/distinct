@@ -11,7 +11,7 @@ distinct_test(
   name_sample = "sample_id",
   design,
   column_to_test = 2,
-  P = 100,
+  P_1 = 100,
   P_2 = 500,
   P_3 = 2000,
   P_4 = 10000,
@@ -40,7 +40,7 @@ Row names of design must indicate the sample ids, and correspond to the names in
 
 \item{column_to_test}{indicates the column(s) of the design one wants to test (do not include the intercept).}
 
-\item{P}{the number of permutations to use on all gene-cluster combinations.}
+\item{P_1}{the number of permutations to use on all gene-cluster combinations.}
 
 \item{P_2}{the number of permutations to use, when a (raw) p-value is < 0.1 (500 by default).}
 
@@ -60,6 +60,9 @@ if computational resources are available, we encourage users to set P_4 = 20,000
 A \code{\linkS4class{data.frame}} object.
 Columns `gene` and `cluster_id` contain the gene and cell-cluster name, while `p_val`, `p_adj.loc` and `p_adj.glb` report the raw p-values, locally and globally adjusted p-values, via Benjamini and Hochberg (BH) correction.
 In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each cluster separately, while in globally adjusted p-values (`p_adj.glb`) BH correction is performed to the results from all clusters.
+Column `filtered` indicates whether a gene-cluster result was filtered (if TRUE), or analyzed (if FALSE).
+A gene-cluster combination is filtered when fewer than `min_non_zero_cells` non-zero cells are available.
+Filtered results have raw and adjusted p-values equal to 1.
 }
 \description{
 \code{distinct_test} tests for differential state between two groups of samples.

@@ -11,7 +11,8 @@ plot_densities(
   name_sample = "sample_id",
   name_group = "group_id",
   cluster,
-  gene
+  gene,
+  group_level = FALSE
 )
 }
 \arguments{
@@ -33,6 +34,8 @@ indicating the name of the colData(x) element which stores the group id of each 
 \item{cluster}{a character, indicating the name of the cluster to plot.}
 
 \item{gene}{a character, indicating the name of the gene to plot.}
+
+\item{group_level}{a logical, indicating whether to plot group-level (if TRUE) or sample-level curves (if FALSE).}
 }
 \value{
 A \code{\link{ggplot}} object.

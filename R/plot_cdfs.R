@@ -15,6 +15,7 @@
 #' indicating the name of the colData(x) element which stores the group id of each cell (i.e., colData(x)$name_colData_group).
 #' @param cluster a character, indicating the name of the cluster to plot.
 #' @param gene a character, indicating the name of the gene to plot.
+#' @param group_level a logical, indicating whether to plot group-level (if TRUE) or sample-level curves (if FALSE).
 #' @param pad a logical element indicating whether to plot the lines of the CDF when 0 and 1 (TRUE) or not (FALSE).
 #' @return A \code{\link{ggplot}} object.
 #' @examples
@@ -41,6 +42,7 @@ plot_cdfs = function(x,
                      name_group = "group_id",
                      cluster,
                      gene,
+                     group_level = FALSE,
                      pad = TRUE){
   
   stopifnot(
@@ -50,7 +52,8 @@ plot_cdfs = function(x,
     is.character(name_sample), length(name_sample) == 1L,
     is.character(name_group), length(name_group) == 1L,
     is.character(cluster), length(cluster) == 1L,
-    is.character(gene), length(gene) == 1L
+    is.character(gene), length(gene) == 1L,
+    is.logical(group_level), length(group_level) == 1L
   )
   
   # count matrix:
@@ -78,16 +81,18 @@ plot_cdfs = function(x,
   cluster_ids = colData(x)[[sel]]
   
   # sample ids:
-  sel = which(names(colData(x)) == name_sample)
-  if( length(sel) == 0 ){
-    message("'name_sample' not found in names(colData(x))")
-    return(NULL)
+  if(!group_level){
+    sel = which(names(colData(x)) == name_sample)
+    if( length(sel) == 0 ){
+      message("'name_sample' not found in names(colData(x))")
+      return(NULL)
+    }
+    if( length(sel) > 1 ){
+      message("'name_sample' found multiple times in names(colData(x))")
+      return(NULL)
+    }
+    sample_ids = factor(colData(x)[[sel]])
   }
-  if( length(sel) > 1 ){
-    message("'name_sample' found multiple times in names(colData(x))")
-    return(NULL)
-  }
-  sample_ids = factor(colData(x)[[sel]])
   
   # group ids (1 per cell)
   sel = which(names(colData(x)) == name_group)
@@ -119,12 +124,20 @@ plot_cdfs = function(x,
     return(NULL)
   }
   
-  DF = data.frame(x = counts[sel_gene, sel_cluster], 
-                  group = group_ids[sel_cluster],
-                  sample = sample_ids[sel_cluster])
+  
+  if(group_level){
+    DF = data.frame(x = counts[sel_gene, sel_cluster], 
+                    group = group_ids[sel_cluster])
+    gg = ggplot(DF, aes(x=x, group=group, colour = group))
+  }else{
+    DF = data.frame(x = counts[sel_gene, sel_cluster], 
+                    group = group_ids[sel_cluster],
+                    sample = sample_ids[sel_cluster])
+    gg = ggplot(DF, aes(x=x, group=sample, colour = group))
+  }
   
   # Density plot:
-  ggplot(DF, aes(x=x, group=sample, colour = group)) +
+  gg +
     geom_hline(yintercept=0, linetype="dashed", color = "grey") +
     geom_hline(yintercept=1, linetype="dashed", color = "grey") +
     stat_ecdf(pad = pad, size = 0.75) +

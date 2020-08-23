@@ -1,8 +1,8 @@
 # this is a R wrapper, to parallelize computation of distinct test via foreach:
 perm_test_parallel_covariates_R = function(P, P_2, P_3, P_4, 
-                                N_breaks, cluster_ids, sample_ids, 
-                                n_samples, group_ids_of_samples, min_non_zero_cells, counts,
-                                n_cores, design_batches){
+                                           N_breaks, cluster_ids, sample_ids, 
+                                           n_samples, group_ids_of_samples, min_non_zero_cells, counts,
+                                           n_cores, design_batches){
   suppressWarnings({
     cl <- makeCluster(n_cores, setup_strategy = "sequential")
   })

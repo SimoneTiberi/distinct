@@ -128,6 +128,39 @@ res = distinct_test(x = Kang_subset,
                     n_cores = 2)
 ```
 
+### Handling covariates and batch effects
+Covariates (such as batch effects), if present, can be added to the design matrix.
+In each cluster of cells, we fit a linear model, with covariates as predictors, and regress them out by performing differential analyeses on the residuals.
+By separately fitting a linear model on each cluster, we allow the effect of covariates to vary from cluster to cluster.
+
+When specifying covariates, we highly recommend using log-normalized data, such as log2-CPMs (e.g., `logcounts` as created via `scater::logNormCounts`), because it is generally assumed that covariates (and particularly batch effects) have an approximately linear effect on the log or log2 scale of counts.
+
+Assume samples are associated to three different batches; we modify the design to also include batches.
+```{r define-batches}
+batch = factor(c("A", "B", "C", "A", "B", "C"))
+
+design = model.matrix(~group + batch)
+# rownames of the design must indicate sample ids:
+rownames(design) = samples
+design
+```
+
+We proceed as before to perform differential testing.
+Again, we specify the column of the design to be tested via `column_to_test = 2`.
+```{r differential-analyses-with-batches}
+set.seed(61217)
+
+res_batches = distinct_test(x = Kang_subset, 
+                            name_assays_expression = "logcounts",
+                            name_cluster = "cell",
+                            name_sample = "sample_id",
+                            design = design,
+                            column_to_test = 2,
+                            min_non_zero_cells = 20,
+                            n_cores = 2)
+```
+
+## Visualizing results
 Results are reported as a `data.frame`, where columns `gene` and `cluster_id` contain the gene and cell-cluster name, while `p_val`, `p_adj.loc` and `p_adj.glb` report the raw p-values, locally and globally adjusted p-values, via Benjamini and Hochberg (BH) correction.
 In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each cluster separately, while in globally adjusted p-values (`p_adj.glb`) BH correction is performed to the results from all clusters.
 
@@ -163,43 +196,8 @@ top_results(res, up_down = "down",
             cluster = "Dendritic cells")
 ```
 
-## Handling covariates and batch effects
-Covariates (such as batch effects), if present, can be added to the design matrix.
-In each cluster of cells, we fit a linear model, with covariates as predictors, and regress them out by performing differential analyeses on the residuals.
-By separately fitting a linear model on each cluster, we allow the effect of covariates to vary from cluster to cluster.
 
-When specifying covariates, we highly recommend using log-normalized data, such as log2-CPMs (e.g., `logcounts` as created via `scater::logNormCounts`), because it is generally assumed that covariates (and particularly batch effects) have an approximately linear effect on the log or log2 scale of counts.
-
-Assume samples are associated to three different batches; we modify the design to also include batches.
-```{r define-batches}
-batch = factor(c("A", "B", "C", "A", "B", "C"))
-
-design = model.matrix(~group + batch)
-# rownames of the design must indicate sample ids:
-rownames(design) = samples
-design
-```
-
-We proceed as before to perform differential testing.
-Again, we specify the column of the design to be tested via `column_to_test = 2`.
-```{r differential-analyses-with-batches}
-set.seed(61217)
-
-res_batches = distinct_test(x = Kang_subset, 
-                            name_assays_expression = "logcounts",
-                            name_cluster = "cell",
-                            name_sample = "sample_id",
-                            design = design,
-                            column_to_test = 2,
-                            min_non_zero_cells = 20,
-                            n_cores = 2)
-
-head(top_results(res_batches))
-
-top_results(res, cluster = "Dendritic cells")
-```
-
-## Visualizing results
+## Plotting significant results
 Density plot of one significant gene (ISG15) in `Dendritic cells` cluster.
 ```{r plot_densitied}
 plot_densities(x = Kang_subset,
@@ -209,6 +207,18 @@ plot_densities(x = Kang_subset,
                name_cluster = "cell",
                name_sample = "sample_id",
                name_group = "stim")
+```
+
+Instead of one curve per sample, we can also plot aggregated group-level curves by setting `group_level = TRUE`.
+```{r plot_densitied_group_level}
+plot_densities(x = Kang_subset,
+               gene = "ISG15",
+               cluster = "Dendritic cells",
+               name_assays_expression = "logcounts",
+               name_cluster = "cell",
+               name_sample = "sample_id",
+               name_group = "stim",
+               group_level = TRUE)
 ```
 
 CDF plot of one significant gene (ISG15) in `Dendritic cells` cluster.

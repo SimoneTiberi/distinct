@@ -12,6 +12,7 @@ plot_cdfs(
   name_group = "group_id",
   cluster,
   gene,
+  group_level = FALSE,
   pad = TRUE
 )
 }
@@ -34,6 +35,8 @@ indicating the name of the colData(x) element which stores the group id of each 
 \item{cluster}{a character, indicating the name of the cluster to plot.}
 
 \item{gene}{a character, indicating the name of the gene to plot.}
+
+\item{group_level}{a logical, indicating whether to plot group-level (if TRUE) or sample-level curves (if FALSE).}
 
 \item{pad}{a logical element indicating whether to plot the lines of the CDF when 0 and 1 (TRUE) or not (FALSE).}
 }

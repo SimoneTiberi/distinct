@@ -1,4 +1,5 @@
 #' @useDynLib distinct, .registration=TRUE
+#' @importFrom scater sumCountsAcrossCells
 #' @importFrom limma is.fullrank
 #' @importFrom Rcpp evalCpp
 #' @importFrom stats p.adjust

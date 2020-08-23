@@ -1,5 +1,4 @@
 #include <RcppArmadillo.h>
-//#include <Rcpp.h>
 #include <cmath>
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(RcppArmadillo)]]

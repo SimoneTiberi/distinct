@@ -49,6 +49,10 @@ Subset from the `Kang18_8vs8()` object of the \code{muscData} package.
 # rowData(sce) = NULL;
 # colnames(sce) = NULL;
 # reducedDim(sce) = NULL
+# sce$ind = NULL
+# sce$sizeFactor = NULL
+# rm assays counts
+# assays(sce) = assays(sce)[2:3]
 #
 # Kang_subset = sce
 # save(Kang_subset, file = "Kang_subset.RData")

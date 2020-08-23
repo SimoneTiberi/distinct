@@ -15,7 +15,7 @@
 #' design must contain one row per sample, while columns include intercept, group and eventual covariates such as batches.
 #' Row names of design must indicate the sample ids, and correspond to the names in colData(x)$name_sample.
 #' @param column_to_test indicates the column(s) of the design one wants to test (do not include the intercept).
-#' @param P the number of permutations to use on all gene-cluster combinations.
+#' @param P_1 the number of permutations to use on all gene-cluster combinations.
 #' @param P_2  the number of permutations to use, when a (raw) p-value is < 0.1 (500 by default).
 #' @param P_3  the number of permutations to use, when a (raw) p-value is < 0.01 (2,000 by default).
 #' @param P_4  the number of permutations to use, when a (raw) p-value is < 0.001 (10,000 by default).
@@ -27,6 +27,9 @@
 #' @return A \code{\linkS4class{data.frame}} object.
 #' Columns `gene` and `cluster_id` contain the gene and cell-cluster name, while `p_val`, `p_adj.loc` and `p_adj.glb` report the raw p-values, locally and globally adjusted p-values, via Benjamini and Hochberg (BH) correction.
 #' In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each cluster separately, while in globally adjusted p-values (`p_adj.glb`) BH correction is performed to the results from all clusters.
+#' Column `filtered` indicates whether a gene-cluster result was filtered (if TRUE), or analyzed (if FALSE).
+#' A gene-cluster combination is filtered when fewer than `min_non_zero_cells` non-zero cells are available.
+#' Filtered results have raw and adjusted p-values equal to 1.
 #' @examples
 #' # load the input data:
 #' data("Kang_subset", package = "distinct")
@@ -107,7 +110,7 @@ distinct_test = function(x,
                          name_sample = "sample_id",
                          design, # design matrix
                          column_to_test = 2,
-                         P   = 100, 
+                         P_1 = 100, 
                          P_2 = 500, 
                          P_3 = 2000, 
                          P_4 = 10000, 
@@ -122,7 +125,7 @@ distinct_test = function(x,
     is.character(name_sample), length(name_sample) == 1L,
     is.matrix(design) | is.data.frame(design),
     is.numeric(column_to_test), length(column_to_test) > 0L,
-    is.numeric(P), length(P) == 1L,
+    is.numeric(P_1), length(P_1) == 1L,
     is.numeric(P_2), length(P_2) == 1L,
     is.numeric(P_3), length(P_3) == 1L,
     is.numeric(P_4), length(P_4) == 1L,
@@ -131,6 +134,12 @@ distinct_test = function(x,
     is.numeric(n_cores), length(n_cores) == 1L
   )
   
+  # check P's are in a non-decreasing order:
+  if( (P_1 > P_2) | (P_2 > P_3) | (P_3 > P_4) ){
+    message("The number of permutations `P_x` must be in a non-decreasing order: P_1 <= P_2 <= P_3 <= P_4")
+    return(NULL)
+  }
+  
   # check for NA's:
   if(any(is.na(design)) | any(is.null(design)) | any(is.nan(design))){
     message("'design' contains NA, NULL or NaN values")
@@ -138,13 +147,13 @@ distinct_test = function(x,
   }
   
   if(!is.fullrank(design)){ # if the matrix is NOT full rank:
-    message("'design' is not full rank.")
+    message("'design' is not full rank")
     return(NULL)
   }
   
   # lower-bound for min_non_zero_cells:
   if(min_non_zero_cells < 0){
-    message("'min_non_zero_cells' must be at least 0.")
+    message("'min_non_zero_cells' must be at least 0")
     return(NULL)
   }
   
@@ -244,29 +253,30 @@ distinct_test = function(x,
   message(paste0(n_groups, " groups of samples provided"))
   
   if(n_groups < 1.5){
-    message("One group only detected; at least 2 groups are needed to perform differential testing between groups.")
+    message("One group only detected; at least 2 groups are needed to perform differential testing between groups")
     return(NULL)
   }
   
   # remove columns to test from the design:
   design_covar = design[,-column_to_test]
   
+  # check if design matrix, without covariates columns still has > 1 column (i.e., not only the intercept):
   cond_covariates = ncol(design) - length(column_to_test) > 1.5 
   if( cond_covariates ){ # 2-group WITH COVARIATES:
-    message("Covariates detected.")
+    message("Covariates detected")
   }
   
   message("Data loaded, starting differential testing")
   
   if(n_groups > 2.5){
-    message("At most 2 groups should be provided: comparisons between more than 2 groups will be implemented (soon) in future releases.")
+    message("At most 2 groups should be provided: comparisons between more than 2 groups will be implemented (soon) in future releases")
     return(NULL)
   }else{
     if( cond_covariates ){ # 2-group WITH COVARIATES:
       
       if(n_cores > 1){
         # call a R wrapper, that parallelizes Rcpp code from R:
-        p_val = perm_test_parallel_covariates_R(P, # number of permutations
+        p_val = perm_test_parallel_covariates_R(P_1, # number of permutations
                                                 P_2,
                                                 P_3,
                                                 P_4,
@@ -282,7 +292,7 @@ distinct_test = function(x,
       }else{
         # call non-parallel Rcpp code:
         p_val = .Call(`_distinct_perm_test_covariates`,
-                      P, # number of permutations
+                      P_1, # number of permutations
                       P_2,
                       P_3,
                       P_4,
@@ -299,7 +309,7 @@ distinct_test = function(x,
     }else{ # 2-group:
       if(n_cores > 1){
         # call a R wrapper, that parallelizes Rcpp code from R:
-        p_val = perm_test_parallel_R(P, # number of permutations
+        p_val = perm_test_parallel_R(P_1, # number of permutations
                                      P_2,
                                      P_3,
                                      P_4,
@@ -314,7 +324,7 @@ distinct_test = function(x,
       }else{
         # call non-parallel Rcpp code:
         p_val = .Call(`_distinct_perm_test`,
-                      P, # number of permutations
+                      P_1, # number of permutations
                       P_2,
                       P_3,
                       P_4,
@@ -332,12 +342,16 @@ distinct_test = function(x,
   
   message("Differential testing completed, returning results")
   
+  # store results which were filtered (due min_non_zero_cells filter)
+  filtered = (p_val == -1)
+  
   # set -1s to NA, so that we don't use these elements when adjusting p-values:
   p_val[ p_val == -1 ] = NA
   
   # locally adjusted p-values:
   res_adjusted_locally = apply(p_val, 2, p.adjust, method = "BH")
   
+  filtered = c(filtered)
   p_val = c(p_val)
   res_adjusted_locally = c(res_adjusted_locally)
   # globally adjusted p-values:
@@ -353,7 +367,8 @@ distinct_test = function(x,
     cluster_id = rep( levels(cluster_ids), each = nrow(counts) ),
     p_val = p_val,
     p_adj.loc = res_adjusted_locally,
-    p_adj.glb = res_adjusted_globally
+    p_adj.glb = res_adjusted_globally,
+    filtered = filtered
   )
   
   # set to 1 pvals (and adjusted pvals) which were NA (not analyzed:)
@@ -361,6 +376,5 @@ distinct_test = function(x,
   res$p_adj.loc[is.na(res$p_adj.loc)] = 1
   res$p_adj.glb[is.na(res$p_adj.glb)] = 1
   
-  # TODO: return an object that can be accesses via "topTags", "gene" or similar (see PB objects):
   res
 }

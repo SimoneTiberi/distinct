@@ -16,7 +16,20 @@
 #' Two additional columns are added: FC_group1/group2 and log2FC_group1/group2, inicating the FC and log2-FC of group1/group2.
 #' A FC > 1 (or log2FC > 0) indicates up-regulation of group1 (compared to group2); while a FC < 1 (or log2FC < 0) indicates down-regulation of group1 (compared to group2).
 #' @examples
-#' # Check the examples of 'distinct_test'
+#' # load pre-computed results (obtaines via `distinct_test`)
+#' data("res", package = "distinct")
+#' # load the input data:
+#' data("Kang_subset", package = "distinct")
+#' 
+#' # We can optionally add the fold change (FC) and log2-FC between groups:
+#' res = log2_FC(res = res,
+#'   x = Kang_subset, 
+#'   name_assays_expression = "cpm",
+#'   name_group = "stim",
+#'   name_cluster = "cell")
+#' 
+#' # Visualize significant results:
+#' head(top_results(res))
 #' 
 #' @author Simone Tiberi \email{simone.tiberi@uzh.ch}
 #' 
@@ -24,11 +37,11 @@
 #' 
 #' @export
 log2_FC = function(res, 
-                       x, 
-                       name_assays_expression = "cpm",
-                       name_group = "group_id",
-                       name_cluster = "cluster_id"
-                       ){
+                   x, 
+                   name_assays_expression = "cpm",
+                   name_group = "group_id",
+                   name_cluster = "cluster_id"
+){
   stopifnot(
     is.data.frame(res),
     ( is(x, "SummarizedExperiment") | is(x, "SingleCellExperiment") ),
@@ -48,7 +61,8 @@ log2_FC = function(res,
     res = res[,-sel_mean_cols]
   }
   
-  # load count matrix:
+  
+  # count matrix:
   sel = which(names(assays(x)) == name_assays_expression)
   if( length(sel) == 0 ){
     message("'name_assays_expression' not found in names(assays(x))")
@@ -59,29 +73,6 @@ log2_FC = function(res,
     return(NULL)
   }
   counts = assays(x)[[sel]]
-  gene_ids = rownames(counts)
-  
-  # load group ids:
-  sel = which(names(colData(x)) == name_group)
-  if( length(sel) == 0 ){
-    message("'name_group' not found in names(colData(x))")
-    return(NULL)
-  }
-  if( length(sel) > 1 ){
-    message("'name_group' found multiple times in names(colData(x))")
-    return(NULL)
-  }
-  group_ids = factor(colData(x)[[sel]])
-  groups = unique(group_ids)
-  
-  # only for 2 groups:
-  if(length(groups) != 2){
-    message("2 groups have to be provided in colData(x)$name_group")
-    return(NULL)
-  }
-  
-  group_1 = group_ids == groups[1]
-  group_2 = group_ids == groups[2]
   
   # cluster ids:
   sel = which(names(colData(x)) == name_cluster)
@@ -95,25 +86,76 @@ log2_FC = function(res,
   }
   cluster_ids = colData(x)[[sel]]
   
-  # check that all clusters in res are present in cluster_id
-  tmp = t(apply(res, 1, function(res_one_row){
-    sel_cells = cluster_ids == res_one_row[[2]]
-    sel_gene = gene_ids == res_one_row[[1]]
-    
-    exp_1 = mean(counts[sel_gene, group_1 & sel_cells])
-    exp_2 = mean(counts[sel_gene, group_2 & sel_cells])
+  # group ids (1 per cell)
+  sel = which(names(colData(x)) == name_group)
+  if( length(sel) == 0 ){
+    message("'name_group' not found in names(colData(x))")
+    return(NULL)
+  }
+  if( length(sel) > 1 ){
+    message("'name_group' found multiple times in names(colData(x))")
+    return(NULL)
+  }
+  group_ids = factor(colData(x)[[sel]])
+  
+  # TODO: GET GROUP
+  group_levels = levels(group_ids)
+  
+  if(length(group_levels) != 2){
+    message("2 groups have to be provided in colData(x)$name_group")
+    return(NULL)
+  }
+  
+  group_1 = group_ids == group_levels[1]
+  group_2 = group_ids == group_levels[2]
+  
+  pb_1 = assays(sumCountsAcrossCells(x = counts[,group_1],
+                                     ids = cluster_ids[group_1],
+                                     average = TRUE))$average
+  # average computes the MEAN expression across cells (it divides by the number of cells in each cluster)
+  
+  pb_2 = assays(sumCountsAcrossCells(x = counts[,group_2],
+                                     ids = cluster_ids[group_2],
+                                     average = TRUE))$average
+  
+  # store cluster and gene names:
+  n_genes = nrow(pb_1)
+  
+  cluster_levels = colnames(pb_1)
+  
+  # in each cluster, compute the mean for groups 1 and 2 (and FC-log2FC)
+  FC_by_cluster = lapply(seq_along(cluster_levels), function(i){
+    exp_1 = pb_1[,i]
+    exp_2 = pb_2[,i]
     FC = exp_1/exp_2
     log2_FC = log2(FC)
     
-    c(exp_1, exp_2, FC, log2_FC)
-  }))
+    cbind( cluster_num = i, gene_num = seq_len(n_genes), exp_1, exp_2, FC, log2_FC)
+  })
+  FC_by_cluster = do.call(rbind,FC_by_cluster)
   
-  colnames(tmp) = c( paste0("mean_", groups[1]),
-                     paste0("mean_", groups[2]),
-                     paste0("FC_", groups[1], "/", groups[2]),
-                     paste0("log2FC_", groups[1], "/", groups[2]) )
-                     
+  # numeric transformations of res and cluster from "res":
+  cluster_res_num = as.numeric(factor(res$cluster_id, levels =  cluster_levels ))
+  gene_res_num = as.numeric(factor(res$gene, levels = rownames(pb_1)))
+  
+  # paste cluster and gene in res:
+  cluster_gene_res = paste(cluster_res_num, gene_res_num, sep=".")
+  
+  # paste cluster and gene in FC_by_cluster
+  cluster_gene_FC = paste(FC_by_cluster[,1], FC_by_cluster[,2], sep=".")
+  
+  matching = match(cluster_gene_res, cluster_gene_FC)
+  tmp = FC_by_cluster[matching, 3:6 ]
+  
+  colnames(tmp) = c( paste0("mean_", group_levels[1]),
+                     paste0("mean_", group_levels[2]),
+                     paste0("FC_", group_levels[1], "/", group_levels[2]),
+                     paste0("log2FC_", group_levels[1], "/", group_levels[2]) )
+  rownames(tmp) = NULL
+  
   res_final = cbind(res, tmp)
+  
+  message("FC and log2_FC computed, returning results")
   
   res_final
 }

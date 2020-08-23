@@ -9,13 +9,38 @@
 #' @param global logical indicating whether to filter results according to p_adj.glb (when TRUE), or p_adj.loc (when FALSE).
 #' @param up_down a character indicating whether to return: all results ("both" or "BOTH"), only up-regulated results ("up" or "UP") or down-regulated results ("down" or "DOWN").
 #' In `res`, a FC > 1 (or log2FC > 0) indicates up-regulation of group1 (compared to group2); while a FC < 1 (or log2FC < 0) indicates down-regulation of group1 (compared to group2).
-#' #' @param up_down a character indicating how results should be sorted.
+#' @param sort_by a character indicating how results should be sorted.
 #' Results can be sorted by globally adjusted p-value ("p_adj.glb", default choice), locally adjusted p-value ("p_adj.loc"), raw p-value ("p_val") or (log2)fold-change ("FC" or "log2FC").
 #' @return A \code{\linkS4class{data.frame}} object.
 #' Columns `gene` and `cluster_id` contain the gene and cell-cluster name, while `p_val`, `p_adj.loc` and `p_adj.glb` report the raw p-values, locally and globally adjusted p-values, via Benjamini and Hochberg (BH) correction.
 #' In locally adjusted p-values (`p_adj.loc`) BH correction is applied in each cluster separately, while in globally adjusted p-values (`p_adj.glb`) BH correction is performed to the results from all clusters.
 #' @examples
-#' # Check the examples of 'distinct_test'
+#' # load pre-computed results (obtaines via `distinct_test`)
+#' data("res", package = "distinct")
+#' 
+#' # Visualize significant results:
+#' head(top_results(res))
+#' 
+#' # Visualize significant results from a specified cluster of cells:
+#' top_results(res, cluster = "Dendritic cells")
+#' 
+#' # We can optionally add the fold change (FC) and log2-FC between groups:
+#' # load the input data:
+#' data("Kang_subset", package = "distinct")
+#' 
+#' res = log2_FC(res = res,
+#'   x = Kang_subset, 
+#'   name_assays_expression = "cpm",
+#'   name_group = "stim",
+#'   name_cluster = "cell")
+#' 
+#' # By default, results from 'top_results' are sorted by (globally) adjusted p-value;
+#' # they can also be sorted by log2-FC:
+#' top_results(res, cluster = "Dendritic cells", sort_by = "log2FC")
+#' 
+#' # Visualize significant UP-regulated genes only:
+#' top_results(res, up_down = "UP",
+#'   cluster = "Dendritic cells")
 #' 
 #' @author Simone Tiberi \email{simone.tiberi@uzh.ch}
 #' 

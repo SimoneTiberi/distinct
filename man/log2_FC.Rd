@@ -37,7 +37,20 @@ A FC > 1 (or log2FC > 0) indicates up-regulation of group1 (compared to group2);
 \code{log2_FC} extends the results obtained via \code{\link{distinct_test}}, by computing fold changes (FC) and log2-FC between conditions.
 }
 \examples{
-# Check the examples of 'distinct_test'
+# load pre-computed results (obtaines via `distinct_test`)
+data("res", package = "distinct")
+# load the input data:
+data("Kang_subset", package = "distinct")
+
+# We can optionally add the fold change (FC) and log2-FC between groups:
+res = log2_FC(res = res,
+  x = Kang_subset, 
+  name_assays_expression = "cpm",
+  name_group = "stim",
+  name_cluster = "cell")
+
+# Visualize significant results:
+head(top_results(res))
 
 }
 \seealso{
