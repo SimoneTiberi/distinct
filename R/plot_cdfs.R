@@ -1,7 +1,7 @@
 #' Plot sample-specific CDFs.
 #'
-#' \code{plot_densities} returns a \code{\link{ggplot}} object
-#' with the sample-specific density estimates, for a specified cluster and gene.
+#' \code{plot_cdfs} returns a \code{\link{ggplot}} object
+#' with the sample-specific cumulative density function (CDF) estimates, for a specified cluster and gene.
 #' 
 #' @param x a \code{\linkS4class{SummarizedExperiment}} or a \code{\linkS4class{SingleCellExperiment}} object.
 #' @param name_assays_expression a character ("logcounts" by default), 
@@ -17,6 +17,7 @@
 #' @param gene a character, indicating the name of the gene to plot.
 #' @param group_level a logical, indicating whether to plot group-level (if TRUE) or sample-level curves (if FALSE).
 #' @param pad a logical element indicating whether to plot the lines of the CDF when 0 and 1 (TRUE) or not (FALSE).
+#' @param size a numeric argument defining the width of lines, passed to \code{\link{stat_ecdf}}.
 #' @return A \code{\link{ggplot}} object.
 #' @examples
 #' data("Kang_subset", package = "distinct")
@@ -43,7 +44,8 @@ plot_cdfs = function(x,
                      cluster,
                      gene,
                      group_level = FALSE,
-                     pad = TRUE){
+                     pad = TRUE,
+                     size = 0.75){
   
   stopifnot(
     ( is(x, "SummarizedExperiment") | is(x, "SingleCellExperiment") ),
@@ -140,7 +142,7 @@ plot_cdfs = function(x,
   gg +
     geom_hline(yintercept=0, linetype="dashed", color = "grey") +
     geom_hline(yintercept=1, linetype="dashed", color = "grey") +
-    stat_ecdf(pad = pad, size = 0.75) +
+    stat_ecdf(pad = pad, size = size) +
     theme_bw() + 
     theme(panel.grid = element_blank()) +
     labs(title = paste(cluster, "-", gene),

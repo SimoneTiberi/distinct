@@ -121,7 +121,7 @@ log2_FC = function(res,
   # store cluster and gene names:
   n_genes = nrow(pb_1)
   
-  cluster_levels = colnames(pb_1)
+  cluster_levels = intersect(colnames(pb_1),colnames(pb_2))
   
   # in each cluster, compute the mean for groups 1 and 2 (and FC-log2FC)
   FC_by_cluster = lapply(seq_along(cluster_levels), function(i){

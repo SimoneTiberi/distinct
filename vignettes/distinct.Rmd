@@ -174,6 +174,27 @@ res = log2_FC(res = res,
               name_cluster = "cell")
 ```
 
+`log2_FC` computes the log-FC between the first and the second level of the group id, in this case beween controls (numerator) and stimulated samples (denominator).
+```{r visualize-group-levels}
+levels(colData(Kang_subset)$stim)
+head(res[,9:10], 3)
+```
+
+To use a different level (i.e., stim/ctrl), we can reorder the levels before running `log2_FC2`.
+```{r reorder-group-levels}
+# set "stim" as 1st level:
+colData(Kang_subset)$stim = relevel(colData(Kang_subset)$stim, "stim")
+levels(colData(Kang_subset)$stim)
+
+res_2 = log2_FC(res = res,
+              x = Kang_subset, 
+              name_assays_expression = "cpm",
+              name_group = "stim",
+              name_cluster = "cell")
+
+head(res_2[,9:10], 3)
+```
+
 We can visualize significant results via `top_results` function.
 ```{r visualize-results}
 head(top_results(res))
@@ -225,8 +246,6 @@ CDF plot of one significant gene (ISG15) in `Dendritic cells` cluster.
 ```{r plot_cdfs}
 plot_cdfs(x = Kang_subset,
           gene = "ISG15",
-          
-          
           cluster = "Dendritic cells",
           name_assays_expression = "logcounts",
           name_cluster = "cell",

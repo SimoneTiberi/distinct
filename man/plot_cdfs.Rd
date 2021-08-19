@@ -13,7 +13,8 @@ plot_cdfs(
   cluster,
   gene,
   group_level = FALSE,
-  pad = TRUE
+  pad = TRUE,
+  size = 0.75
 )
 }
 \arguments{
@@ -39,13 +40,15 @@ indicating the name of the colData(x) element which stores the group id of each 
 \item{group_level}{a logical, indicating whether to plot group-level (if TRUE) or sample-level curves (if FALSE).}
 
 \item{pad}{a logical element indicating whether to plot the lines of the CDF when 0 and 1 (TRUE) or not (FALSE).}
+
+\item{size}{a numeric argument defining the width of lines, passed to \code{\link{stat_ecdf}}.}
 }
 \value{
 A \code{\link{ggplot}} object.
 }
 \description{
-\code{plot_densities} returns a \code{\link{ggplot}} object
-with the sample-specific density estimates, for a specified cluster and gene.
+\code{plot_cdfs} returns a \code{\link{ggplot}} object
+with the sample-specific cumulative density function (CDF) estimates, for a specified cluster and gene.
 }
 \examples{
 data("Kang_subset", package = "distinct")

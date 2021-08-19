@@ -16,6 +16,8 @@
 #' @param cluster a character, indicating the name of the cluster to plot.
 #' @param gene a character, indicating the name of the gene to plot.
 #' @param group_level a logical, indicating whether to plot group-level (if TRUE) or sample-level curves (if FALSE).
+#' @param adjust a numeric, representing a multiplicate bandwidth adjustment, argument passed to \code{\link{stat_density}}.
+#' @param size a numeric argument defining the width of lines, passed to \code{\link{stat_density}}.
 #' @return A \code{\link{ggplot}} object.
 #' @examples
 #' data("Kang_subset", package = "distinct")
@@ -41,7 +43,9 @@ plot_densities = function(x,
                           name_group = "group_id",
                           cluster,
                           gene,
-                          group_level = FALSE){
+                          group_level = FALSE,
+                          adjust = 1,
+                          size = 0.75){
   
   stopifnot(
     ( is(x, "SummarizedExperiment") | is(x, "SingleCellExperiment") ),
@@ -135,12 +139,13 @@ plot_densities = function(x,
   
   # Density plot:
   gg +
-    geom_density(size = 0.75, show.legend = FALSE) +
     stat_density(aes(x=x, colour=group), 
-                 size = 0.75,
+                 adjust = adjust,
+                 size = size,
                  geom="line", position="identity") +
     theme_bw() + 
     theme(panel.grid = element_blank()) +
     labs(title = paste(cluster, "-", gene),
          x = name_assays_expression)
 }
+
