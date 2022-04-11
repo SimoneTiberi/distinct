@@ -116,7 +116,6 @@ distinct_test = function(x,
                          P_4 = 10000, 
                          N_breaks = 25, 
                          min_non_zero_cells = 20,
-                         # MG_test = "pairwise",
                          n_cores = 1){
   stopifnot(
     ( is(x, "SummarizedExperiment") | is(x, "SingleCellExperiment") ),
@@ -269,7 +268,8 @@ distinct_test = function(x,
   message("Data loaded, starting differential testing")
   
   if(n_groups > 2.5){
-    message("At most 2 groups should be provided: comparisons between more than 2 groups will be implemented (soon) in future releases")
+    message("At most 2 groups should be provided.")
+    message("To compare more than 2 groups, please perform pairwise testing between pairs of groups.")
     return(NULL)
   }else{
     if( cond_covariates ){ # 2-group WITH COVARIATES:

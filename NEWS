@@ -1,3 +1,6 @@
+Changes in version 1.6.1:
++ when removing nuisance covariates, the previous linear model was replaced with a linear mixed effect model with: i) fixed effects for the nuisance covariates, and ii) random effects for the samples. This properly accounts for the correlation structure of cells belonging to the same sample.
+
 Changes in version 1.4.1:
 + fixed bug in log2_FC.R;
 + added rmarkdown as `Suggests` in DESCRIPTION.

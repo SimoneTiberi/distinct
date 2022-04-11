@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // perm_test
 List perm_test(unsigned int const& P, unsigned int const& P_2, unsigned int const& P_3, unsigned int const& P_4, unsigned int const& N_breaks, arma::vec const& cluster_ids, unsigned int const& n_clusters, arma::vec const& sample_ids, unsigned int const& n_samples, arma::vec const& group_ids_of_samples, double const& min_non_zero_cells, arma::sp_mat const& counts);
 RcppExport SEXP _distinct_perm_test(SEXP PSEXP, SEXP P_2SEXP, SEXP P_3SEXP, SEXP P_4SEXP, SEXP N_breaksSEXP, SEXP cluster_idsSEXP, SEXP n_clustersSEXP, SEXP sample_idsSEXP, SEXP n_samplesSEXP, SEXP group_ids_of_samplesSEXP, SEXP min_non_zero_cellsSEXP, SEXP countsSEXP) {
@@ -92,35 +97,12 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// perm_test_zero_inflated
-List perm_test_zero_inflated(unsigned int const& P, unsigned int const& P_2, unsigned int const& P_3, unsigned int const& P_4, unsigned int const& N_breaks, arma::vec const& cluster_ids, unsigned int const& n_clusters, arma::vec const& sample_ids, unsigned int const& n_samples, arma::vec const& group_ids_of_samples, double const& min_non_zero_cells, arma::sp_mat const& counts);
-RcppExport SEXP _distinct_perm_test_zero_inflated(SEXP PSEXP, SEXP P_2SEXP, SEXP P_3SEXP, SEXP P_4SEXP, SEXP N_breaksSEXP, SEXP cluster_idsSEXP, SEXP n_clustersSEXP, SEXP sample_idsSEXP, SEXP n_samplesSEXP, SEXP group_ids_of_samplesSEXP, SEXP min_non_zero_cellsSEXP, SEXP countsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< unsigned int const& >::type P(PSEXP);
-    Rcpp::traits::input_parameter< unsigned int const& >::type P_2(P_2SEXP);
-    Rcpp::traits::input_parameter< unsigned int const& >::type P_3(P_3SEXP);
-    Rcpp::traits::input_parameter< unsigned int const& >::type P_4(P_4SEXP);
-    Rcpp::traits::input_parameter< unsigned int const& >::type N_breaks(N_breaksSEXP);
-    Rcpp::traits::input_parameter< arma::vec const& >::type cluster_ids(cluster_idsSEXP);
-    Rcpp::traits::input_parameter< unsigned int const& >::type n_clusters(n_clustersSEXP);
-    Rcpp::traits::input_parameter< arma::vec const& >::type sample_ids(sample_idsSEXP);
-    Rcpp::traits::input_parameter< unsigned int const& >::type n_samples(n_samplesSEXP);
-    Rcpp::traits::input_parameter< arma::vec const& >::type group_ids_of_samples(group_ids_of_samplesSEXP);
-    Rcpp::traits::input_parameter< double const& >::type min_non_zero_cells(min_non_zero_cellsSEXP);
-    Rcpp::traits::input_parameter< arma::sp_mat const& >::type counts(countsSEXP);
-    rcpp_result_gen = Rcpp::wrap(perm_test_zero_inflated(P, P_2, P_3, P_4, N_breaks, cluster_ids, n_clusters, sample_ids, n_samples, group_ids_of_samples, min_non_zero_cells, counts));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_distinct_perm_test", (DL_FUNC) &_distinct_perm_test, 12},
     {"_distinct_perm_test_covariates", (DL_FUNC) &_distinct_perm_test_covariates, 13},
     {"_distinct_perm_test_parallel_covariates", (DL_FUNC) &_distinct_perm_test_parallel_covariates, 11},
     {"_distinct_perm_test_parallel", (DL_FUNC) &_distinct_perm_test_parallel, 10},
-    {"_distinct_perm_test_zero_inflated", (DL_FUNC) &_distinct_perm_test_zero_inflated, 12},
     {NULL, NULL, 0}
 };
 

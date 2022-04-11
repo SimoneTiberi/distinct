@@ -1,15 +1,18 @@
 #include <RcppArmadillo.h>
+#include "Rfast.h"
 #include <cmath>
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(RcppArmadillo)]]
-using namespace Rcpp;
+// [[Rcpp::depends(Rfast)]]
 using namespace arma;
+using namespace Rcpp;
+using namespace Rfast;
 
 // wrapper around R's RNG such that we get a uniform distribution over
 // [0,n) as required by the STL algorithm
 inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
-unsigned int perm_one_gene_covariates_parallel(arma::vec const& breaks, 
+  unsigned int perm_one_gene_covariates_parallel(arma::vec const& breaks, 
                            arma::mat& cdf_A, 
                            arma::mat& cdf_B,
                            unsigned int const& n_samples,
@@ -116,6 +119,125 @@ unsigned int perm_one_gene_covariates_parallel(arma::vec const& breaks,
   return res;
 }
 
+// Author of the function below: Stefanos Fafalios, taken from Rfast CRAN package
+double calc_f_parallel(vec nix, double n, vec ni2hi2, double S, double x, int size){
+  double sum1 = 0.0, sum2 = 0.0;
+  
+  for(int i = 0; i < size; i++){
+    sum1+=log1p(nix[i]);
+    sum2+=ni2hi2[i]/(1+nix[i]);
+  }
+  
+  return sum1+n*log(S-x*sum2);
+}
+
+// Author of the function below: Stefanos Fafalios, taken from Rfast CRAN package
+vec gold_rat3_parallel(double n, vec ni, vec ni2, double S, vec hi2,const int size, const double tol=1e-07){
+  double a = 0, b = 50;
+  const double ratio=0.618033988749895;
+  double x1=b-ratio*b, x2=ratio*b;
+  vec nix1 = ni*x1, nix2 = ni*x2, ni2hi2 = ni2%hi2;
+  
+  double f1 = calc_f_parallel(nix1, n, ni2hi2, S, x1, size);
+  double f2 = calc_f_parallel(nix2, n, ni2hi2, S, x2, size);
+  double bmina = b - a;
+  while (abs(bmina)>tol){
+    if(f2>f1){
+      b=x2;
+      bmina = b - a;
+      x2=x1;
+      f2=f1;
+      x1=b - ratio * (bmina);
+      nix1 = ni*x1;
+      f1 = calc_f_parallel(nix1, n, ni2hi2, S, x1, size);
+    }
+    else {
+      a=x1;
+      bmina = b - a;
+      x1=x2;
+      f1=f2;
+      x2=a + ratio * (bmina);
+      nix2 = ni*x2;
+      f2 = calc_f_parallel(nix2, n, ni2hi2, S, x2, size);
+    }
+  }
+  vec ret(2);
+  ret(0) = 0.5*(x1+x2);
+  ret(1) = (f1+f2)/2;
+  
+  return ret;
+}
+
+// Author of the function below: Stefanos Fafalios, taken from Rfast CRAN package
+vec my_rint_reg_parallel(arma::mat const& x, 
+                arma::vec const& y,
+                Rcpp::IntegerVector id, 
+                unsigned int const& n,
+                unsigned int const& p,
+                double const& tol,
+                unsigned int const& maxiters){
+  // do these bits once only in every cluster of cells, not n_genes times!
+  int idmx,idmn;
+  maximum<int>(id.begin(),id.end(),idmx);
+  minimum<int>(id.begin(),id.end(),idmn);
+  mat xx(p,p),sx(idmx,p),sxy(p,1),mx(idmx,p);
+  vec my(idmx);
+  
+  vec ni=Tabulate<vec,IntegerVector>(id,idmx);
+  
+  xx = cross_x<mat,mat>(x);
+  for(int i=0;i<p;i++)
+    sx.col(i) = group_sum_helper<vec,vec,IntegerVector>(x.col(i), id, &idmn,&idmx);
+  sxy = cross_x_y<mat,mat,vec>(x,y);
+  colvec sy = group_sum_helper<colvec,vec,IntegerVector>(y, id, &idmn,&idmx);
+  mx = sx.each_col()/ni;
+  my = sy/ni;
+  
+  mat b1 = solve(xx,sxy,solve_opts::fast);
+  vec tmp = y - x*b1;
+  double S = sum_with<square2<double>, vec>(tmp);
+  vec tmp2 = my-mx*b1;
+  vec hi2 = tmp2%tmp2;
+  vec ni2 = ni%ni;
+  
+  vec d(2);
+  d = gold_rat3_parallel(n, ni, ni2, S, hi2,idmx, tol);
+  vec oneplnid = 1+ni*d(0);
+  vec b2 = solve(xx - d(0)* cross_x_y<mat,mat,vec>(sx.each_col()/oneplnid, sx), sxy -
+    d(0) * cross_x_y<mat,mat,vec>(sx, sy/oneplnid),solve_opts::fast);
+  int i = 2;
+  
+  while(i++<maxiters && sum(abs(b2-b1.col(0))) > tol) {
+    b1.col(0) = b2;
+    
+    tmp = y - x*b1;
+    S = sum_with<square2<double>, vec>(tmp);
+    tmp2 = my-mx*b1;
+    hi2 = tmp2%tmp2;
+    
+    d = gold_rat3_parallel(n, ni, ni2, S, hi2,idmx, tol);
+    oneplnid = 1+ni*d(0);
+    b2 = solve(xx - d(0) * cross_x_y<mat,mat,vec>(sx.each_col()/oneplnid, sx), sxy -
+      d(0) * cross_x_y<mat,mat,vec>(sx, sy/oneplnid),solve_opts::fast);
+  }
+  
+  return b2;
+}
+
+arma::vec my_residuals_parallel(arma::mat const& X, 
+                       arma::vec const& Y,
+                       Rcpp::IntegerVector const& id, 
+                       unsigned int const& n, 
+                       unsigned int const& p, 
+                       double const& tol,
+                       unsigned int const& maxiters){
+  vec coef = my_rint_reg_parallel( X, Y, id, n, p, tol, maxiters);
+  
+  vec res;
+  res = Y - X * coef;
+  return res;
+}
+
 // [[Rcpp::export]]
 List perm_test_parallel_covariates(unsigned int const& P,                             // number of permutations for all gene-cluster combinations
                         unsigned int const& P_2,                           // number of permutations when p < 0.1
@@ -127,7 +249,7 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
                         arma::vec const& group_ids_of_samples,                   // ids of groups (1 or 2) for every sample
                         double const& min_non_zero_cells,                  // min number of cells with > 0 expression in each cluster to consider the gene for testing
                         arma::sp_mat const& counts,
-                        arma::mat& design)                       // design, excluding group
+                        arma::mat& design) // design, excluding group
 {
   arma::colvec y, coef, residuals; // colvectors needed to compute lm residuals
   
@@ -135,7 +257,7 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
   arma::vec T_perm(P), T_perm_2(P_2 - P), T_perm_3(P_3 - P_2), T_perm_4(P_4 - P_3);
   
   /* Global variables */
-  unsigned int tmp2, cell, b, sample, p, n_cells,  K = design.n_cols;
+  unsigned int tmp2, cell, b, sample, p, n_cells, k, K = design.n_cols;
   
   double T_obs, p_val;
   
@@ -161,6 +283,10 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
   //arma::uvec ids_both = arma::find( cluster_ids == cl_id );
   n_cells = counts.n_rows; //ids_both.n_elem;
   arma::vec counts_one_gene(n_cells);
+  
+  // create the Rcpp vector from the arma vector
+  Rcpp::IntegerVector sample_ids_one_cl_vec(n_cells);
+  sample_ids_one_cl_vec = sample_ids +1;
   
   // vector with data for one gene (all cells of all clusters):
   //arma::vec counts_gene(n_cells_overall);
@@ -216,6 +342,22 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
     sample_has_cells(sample) = any(sample_ids==sample);
   }
   
+  // only when NOT all samples have cells, rescale the id:
+  unsigned int id = 1;
+  bool cond = all(sample_has_cells);
+  if( cond == false ){
+    for (sample=0 ; sample<n_samples ; sample++) {
+      if ( (sample_has_cells(sample))==1 ) { // check that samples have at least 1 cell
+        for (unsigned int cell = 0; cell < n_cells; ++cell) {
+          if(sample_ids(cell) == sample){
+            sample_ids_one_cl_vec(cell) = id;
+          }
+        }
+        id += 1;
+      }
+    }
+  }
+  
   /* Flag to interrupt the code from R: */
   // Rcpp::checkUserInterrupt();
   
@@ -224,7 +366,7 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
   arma::mat X_design(n_cells, K);
   // compute design matrix: select for every cell the corresponding sample's design row via sample_ids[cell]
   for (unsigned int cell = 0; cell < n_cells; ++cell) {
-    for(unsigned int k = 0; k < K; k++){
+    for(k = 0; k < K; k++){
       X_design(cell, k) = design(sample_ids(cell), k);
     }
   }
@@ -242,16 +384,9 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
     
     /* */
     if (s >= min_non_zero_cells) {
-      // create an arma::colvec element y containing the expression data for each cell
-      //arma::colvec y(counts_one_gene.begin(), n, false); // reuses memory, avoids extra copy
-      y = counts_one_gene;
-      // fit model y ~ X:
-      coef = arma::solve(X_design, y);
       // residuals:
-      // remove all, except the 1st column (intercept!), add the intercept back:
-      residuals = y - X_design*coef; // + X_design_arma.col(0) * coef[0];
-      counts_one_gene = residuals;
-
+      counts_one_gene = my_residuals_parallel(X_design, counts_one_gene, sample_ids_one_cl_vec, n_cells, K, 1e-08, 100);
+      
       /* CDF grid */ 
       mn = counts_one_gene.min();
       len_out = ( counts_one_gene.max() - mn ) / (N_breaks + 1.0);

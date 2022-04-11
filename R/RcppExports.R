@@ -17,7 +17,3 @@ perm_test_parallel <- function(P, P_2, P_3, P_4, N_breaks, sample_ids, n_samples
     .Call(`_distinct_perm_test_parallel`, P, P_2, P_3, P_4, N_breaks, sample_ids, n_samples, group_ids_of_samples, min_non_zero_cells, counts)
 }
 
-perm_test_zero_inflated <- function(P, P_2, P_3, P_4, N_breaks, cluster_ids, n_clusters, sample_ids, n_samples, group_ids_of_samples, min_non_zero_cells, counts) {
-    .Call(`_distinct_perm_test_zero_inflated`, P, P_2, P_3, P_4, N_breaks, cluster_ids, n_clusters, sample_ids, n_samples, group_ids_of_samples, min_non_zero_cells, counts)
-}
-
