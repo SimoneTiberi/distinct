@@ -1,0 +1,22 @@
+citHeader("To cite distinct in publications use:")
+
+citEntry(entry 	= "Article",
+  title        	= "distinct: a novel approach to differential distribution analyses",
+  author       	= personList(as.person("Simone Tiberi"),
+                    as.person("Helana L Crowell"),
+                    as.person("Lukas M Weber"),
+                    as.person("Pantelis Samartsidis"),
+                   as.person("Mark D. Robinson")),
+	eprint = "https://doi.org/10.1101/2020.11.24.394213",
+	journal = "bioRxiv",
+	volume= "",
+  number= "",
+  year = "2020",
+  doi	= "10.1101/2020.11.24.394213",
+  url  = "https://doi.org/10.1101/2020.11.24.394213",
+	publisher = "Cold Spring Harbor Laboratory",
+  paste("Simone Tiberi, Helena L Crowell, Lukas M Weber, Pantelis Samartsidis and Mark D. Robinson (2020).",
+        "distinct: a novel approach to differential distribution analyses.",
+        "bioRxiv.",
+        "URL https://doi.org/10.1101/2020.11.24.394213")
+)

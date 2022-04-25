@@ -1,0 +1,25 @@
+Changes in version 1.7.2:
++ differential testing allowed, even when 1 gene only is provided
+
+Changes in version 1.7.1:
++ when removing nuisance covariates, the previous linear model was replaced with a linear mixed effect model with: i) fixed effects for the nuisance covariates, and ii) random effects for the samples. This properly accounts for the correlation structure of cells belonging to the same sample.
+
+Changes in version 1.4.1:
++ fixed bug in log2_FC.R;
++ added rmarkdown as `Suggests` in DESCRIPTION.
+
+Changes in version 1.0.4:
++ major speed-up in log2-FC function.
+
+Changes in version 1.0.3:
++ FC and log2-FC calculation added (via 'log2_FC' function);
++ 'top_results' function edited to sort results by p-value and log2-FC.
+
+Changes in version 1.0.1:
++ substantial speed-up in `distinct_test` (~7 times faster);
++ parallel computing introduced;
++ modelling of covariates introduced, via a design matrix;
++ two new functions to visualize results: `plot_cdfs` and `plot_densities`.
+
+Changes in version 1.0.0:
++ Submitted to Bioconductor
