@@ -7,7 +7,7 @@
 It is particularly suitable to perform differential state analyses on single cell data (i.e., differential analyses within sub-populations of cells), such as single cell RNA sequencing (scRNA-seq) and high-dimensional flow or mass cytometry (HDCyto) data.
 The method also allows for nuisance covariates (such as batch effects).
 
->  Simone Tiberi, Helena L Crowell, Pantelis Samartsidis, Lukas M Weber, and Mark D Robinson (2020).
+>  Simone Tiberi, Helena L Crowell, Pantelis Samartsidis, Lukas M Weber, and Mark D Robinson.
 >
 > distinct: a novel approach to differential distribution analyses.
 >
