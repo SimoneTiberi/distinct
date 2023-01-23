@@ -11,7 +11,8 @@ The method also allows for nuisance covariates (such as batch effects).
 >
 > distinct: a novel approach to differential distribution analyses.
 >
-> *bioRxiv* doi: [10.1101/2020.11.24.394213](https://doi.org/10.1101/2020.11.24.394213)
+> The Annals of Applied Statistics (2023).
+> Available [here](https://www.e-publications.org/ims/submission/AOAS/user/submissionFile/52840?confirm=11abdc0f)
 
 ## Bioconductor installation 
 `distinct` is available on [Bioconductor](https://bioconductor.org/packages/distinct) and can be installed with the command:
