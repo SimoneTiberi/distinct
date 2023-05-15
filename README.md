@@ -23,8 +23,8 @@ BiocManager::install("distinct")
 ```
 
 ## Vignette
-The vignette illustrating how to use the package can be accessed on the 
-[Bioconductor website](https://www.bioconductor.org/packages/release/bioc/vignettes/distinct/inst/doc/distinct.pdf)
+The vignette illustrating how to use the package can be accessed on 
+[Bioconductor](https://bioconductor.org/packages/distinct)
 or from R via:
 ``` r
 vignette("distinct")
