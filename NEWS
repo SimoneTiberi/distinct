@@ -1,3 +1,6 @@
+Changes in version 1.14.1:
++ ERROR solved regarind Rfast dependency
+
 Changes in version 1.7.2:
 + differential testing allowed, even when 1 gene only is provided
 
