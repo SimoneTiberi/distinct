@@ -1,13 +1,13 @@
 #include <RcppArmadillo.h>
 #include <cmath>
-// [[Rcpp::plugins(cpp11)]]
+// [[Rcpp::plugins(cpp17)]]
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 using namespace arma;
 
 // wrapper around R's RNG such that we get a uniform distribution over
 // [0,n) as required by the STL algorithm
-inline int randWrapper(const int n) { return floor(unif_rand()*n); }
+// inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
 unsigned int perm_one_gene_parallel(arma::vec const& breaks, 
                            arma::mat& cdf_A, 
@@ -172,45 +172,45 @@ List perm_test_parallel(unsigned int const& P,                             // nu
   Rcpp::IntegerMatrix PERMUTATIONS(n_cells,P);
   Rcpp::IntegerVector permutation = Rcpp::seq_len(n_cells)-1; // define the vector for each permutation, -1 because Rcpp indexes start from 0 !
   for (p=0 ; p<P ; p++) {
-    // PERM.col(p) = randperm(n_cells);
-    std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
-    PERMUTATIONS(_,p) = permutation;
+    PERM.col(p) = randperm(n_cells);
+    // std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
+    // PERMUTATIONS(_,p) = permutation;
     // PERM.col(p) = Rcpp::as<arma::vec>(permutation);
   }
-  PERM = Rcpp::as<arma::umat>(PERMUTATIONS);
+  // PERM = Rcpp::as<arma::umat>(PERMUTATIONS);
   
   /* SECOND permutation martix */ 
   arma::umat PERM_2(n_cells,P_2-P);
   Rcpp::IntegerMatrix PERMUTATIONS_2(n_cells,P_2-P);
   for (p=0 ; p<(P_2-P) ; p++) {
-    // PERM.col(p) = randperm(n_cells);
-    std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
-    PERMUTATIONS_2(_,p) = permutation;
+    PERM_2.col(p) = randperm(n_cells);
+    // std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
+    // PERMUTATIONS_2(_,p) = permutation;
     // PERM.col(p) = Rcpp::as<arma::vec>(permutation);
   }
-  PERM_2 = Rcpp::as<arma::umat>(PERMUTATIONS_2);
+  // PERM_2 = Rcpp::as<arma::umat>(PERMUTATIONS_2);
   
   /* THIRD permutation martix */ 
   arma::umat PERM_3(n_cells,P_3-P_2);
   Rcpp::IntegerMatrix PERMUTATIONS_3(n_cells,P_3-P_2);
   for (p=0 ; p<(P_3-P_2) ; p++) {
-    // PERM.col(p) = randperm(n_cells);
-    std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
-    PERMUTATIONS_3(_,p) = permutation;
+    PERM_3.col(p) = randperm(n_cells);
+    // std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
+    // PERMUTATIONS_3(_,p) = permutation;
     // PERM.col(p) = Rcpp::as<arma::vec>(permutation);
   }
-  PERM_3 = Rcpp::as<arma::umat>(PERMUTATIONS_3);
+  // PERM_3 = Rcpp::as<arma::umat>(PERMUTATIONS_3);
   
   /* THIRD permutation martix */ 
   arma::umat PERM_4(n_cells,P_4-P_3);
   Rcpp::IntegerMatrix PERMUTATIONS_4(n_cells,P_4-P_3);
   for (p=0 ; p<(P_4-P_3) ; p++) {
-    // PERM.col(p) = randperm(n_cells);
-    std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
-    PERMUTATIONS_4(_,p) = permutation;
+    PERM_4.col(p) = randperm(n_cells);
+    // std::random_shuffle(permutation.begin(), permutation.end(), randWrapper);
+    // PERMUTATIONS_4(_,p) = permutation;
     // PERM.col(p) = Rcpp::as<arma::vec>(permutation);
   }
-  PERM_4 = Rcpp::as<arma::umat>(PERMUTATIONS_4);
+  // PERM_4 = Rcpp::as<arma::umat>(PERMUTATIONS_4);
   
   sample_has_cells.fill(0);
   for (sample=0 ; sample<n_samples ; sample++) {

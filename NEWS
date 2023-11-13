@@ -1,3 +1,6 @@
+Changes in version 1.14.2:
++ Updated from C++11 to C++17
+
 Changes in version 1.14.1:
 + ERROR solved regarind Rfast dependency
 
