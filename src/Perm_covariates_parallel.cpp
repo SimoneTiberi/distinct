@@ -4,6 +4,7 @@
 // [[Rcpp::plugins(cpp17)]]
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(Rfast)]]
+// [[Rcpp::depends(RcppParallel)]]
 using namespace arma;
 using namespace Rcpp;
 using namespace Rfast;
@@ -186,7 +187,8 @@ vec my_rint_reg_parallel(arma::mat const& x,
   vec ni=Tabulate<vec,IntegerVector>(id,idmx);
   
   xx = cross_x<mat,mat>(x);
-  for(unsigned int i=0;i<p;i++)
+  unsigned int i;
+  for(i=0;i<p;i++)
     sx.col(i) = group_sum_helper<vec,vec,IntegerVector>(x.col(i), id, &idmn,&idmx);
   sxy = cross_x_y<mat,mat,vec>(x,y);
   colvec sy = group_sum_helper<colvec,vec,IntegerVector>(y, id, &idmn,&idmx);
@@ -205,7 +207,7 @@ vec my_rint_reg_parallel(arma::mat const& x,
   vec oneplnid = 1+ni*d(0);
   vec b2 = solve(xx - d(0)* cross_x_y<mat,mat,vec>(sx.each_col()/oneplnid, sx), sxy -
     d(0) * cross_x_y<mat,mat,vec>(sx, sy/oneplnid),solve_opts::fast);
-  int i = 2;
+  i = 2;
   
   while(i++<maxiters && sum(abs(b2-b1.col(0))) > tol) {
     b1.col(0) = b2;
