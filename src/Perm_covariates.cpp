@@ -1,4 +1,5 @@
 #include <RcppArmadillo.h>
+#include <RcppParallel.h>
 #include "Rfast.h"
 #include <cmath>
 // [[Rcpp::plugins(cpp17)]]
@@ -8,6 +9,7 @@
 using namespace arma;
 using namespace Rcpp;
 using namespace Rfast;
+using namespace RcppParallel;
 
 // wrapper around R's RNG such that we get a uniform distribution over
 // [0,n) as required by the STL algorithm
@@ -227,12 +229,12 @@ vec my_rint_reg(arma::mat const& x,
 }
 
 arma::vec my_residuals(arma::mat const& X, 
-                 arma::vec const& Y,
-                 Rcpp::IntegerVector const& id, 
-                 unsigned int const& n, 
-                 unsigned int const& p, 
-                 double const& tol,
-                 unsigned int const& maxiters){
+                       arma::vec const& Y,
+                       Rcpp::IntegerVector const& id, 
+                       unsigned int const& n, 
+                       unsigned int const& p, 
+                       double const& tol,
+                       unsigned int const& maxiters){
   vec coef = my_rint_reg( X, Y, id, n, p, tol, maxiters);
   
   vec res;

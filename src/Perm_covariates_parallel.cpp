@@ -1,4 +1,5 @@
 #include <RcppArmadillo.h>
+#include <RcppParallel.h>
 #include "Rfast.h"
 #include <cmath>
 // [[Rcpp::plugins(cpp17)]]
@@ -8,27 +9,28 @@
 using namespace arma;
 using namespace Rcpp;
 using namespace Rfast;
+using namespace RcppParallel;
 
 // wrapper around R's RNG such that we get a uniform distribution over
 // [0,n) as required by the STL algorithm
 // inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
-  unsigned int perm_one_gene_covariates_parallel(arma::vec const& breaks, 
-                           arma::mat& cdf_A, 
-                           arma::mat& cdf_B,
-                           unsigned int const& n_samples,
-                           arma::uvec const& sample_has_cells,
-                           arma::vec const& sample_ids_one_cl,
-                           arma::vec const& counts_one_gene,
-                           arma::vec const& group_ids_of_samples,
-                           unsigned int const& N_breaks,
-                           unsigned int const& n_samples_A,
-                           unsigned int const& n_samples_B,
-                           arma::vec& T_perm,
-                           unsigned int const& P,
-                           unsigned int const& n_both,
-                           arma::umat const& PERM,
-                           double T_obs)
+unsigned int perm_one_gene_covariates_parallel(arma::vec const& breaks, 
+                                               arma::mat& cdf_A, 
+                                               arma::mat& cdf_B,
+                                               unsigned int const& n_samples,
+                                               arma::uvec const& sample_has_cells,
+                                               arma::vec const& sample_ids_one_cl,
+                                               arma::vec const& counts_one_gene,
+                                               arma::vec const& group_ids_of_samples,
+                                               unsigned int const& N_breaks,
+                                               unsigned int const& n_samples_A,
+                                               unsigned int const& n_samples_B,
+                                               arma::vec& T_perm,
+                                               unsigned int const& P,
+                                               unsigned int const& n_both,
+                                               arma::umat const& PERM,
+                                               double T_obs)
 {
   unsigned int res = 0;
   unsigned int tmp2, cell, b, sample, p;
@@ -171,12 +173,12 @@ vec gold_rat3_parallel(double n, vec ni, vec ni2, double S, vec hi2,const int si
 
 // Author of the function below: Stefanos Fafalios, taken from Rfast CRAN package
 vec my_rint_reg_parallel(arma::mat const& x, 
-                arma::vec const& y,
-                Rcpp::IntegerVector id, 
-                unsigned int const& n,
-                unsigned int const& p,
-                double const& tol,
-                unsigned int const& maxiters){
+                         arma::vec const& y,
+                         Rcpp::IntegerVector id, 
+                         unsigned int const& n,
+                         unsigned int const& p,
+                         double const& tol,
+                         unsigned int const& maxiters){
   // do these bits once only in every cluster of cells, not n_genes times!
   int idmx,idmn;
   maximum<int>(id.begin(),id.end(),idmx);
@@ -227,12 +229,12 @@ vec my_rint_reg_parallel(arma::mat const& x,
 }
 
 arma::vec my_residuals_parallel(arma::mat const& X, 
-                       arma::vec const& Y,
-                       Rcpp::IntegerVector const& id, 
-                       unsigned int const& n, 
-                       unsigned int const& p, 
-                       double const& tol,
-                       unsigned int const& maxiters){
+                                arma::vec const& Y,
+                                Rcpp::IntegerVector const& id, 
+                                unsigned int const& n, 
+                                unsigned int const& p, 
+                                double const& tol,
+                                unsigned int const& maxiters){
   vec coef = my_rint_reg_parallel( X, Y, id, n, p, tol, maxiters);
   
   vec res;
@@ -242,16 +244,16 @@ arma::vec my_residuals_parallel(arma::mat const& X,
 
 // [[Rcpp::export]]
 List perm_test_parallel_covariates(unsigned int const& P,                             // number of permutations for all gene-cluster combinations
-                        unsigned int const& P_2,                           // number of permutations when p < 0.1
-                        unsigned int const& P_3,                           // number of permutations when p < 0.01
-                        unsigned int const& P_4,                           // number of permutations when p < 0.001
-                        unsigned int const& N_breaks,                      // number of breaks at which to evaluate the cdf
-                        arma::vec const& sample_ids,                             // ids of samples for every cell
-                        unsigned int const& n_samples,                     // total number of samples
-                        arma::vec const& group_ids_of_samples,                   // ids of groups (1 or 2) for every sample
-                        double const& min_non_zero_cells,                  // min number of cells with > 0 expression in each cluster to consider the gene for testing
-                        arma::sp_mat const& counts,
-                        arma::mat& design) // design, excluding group
+                                   unsigned int const& P_2,                           // number of permutations when p < 0.1
+                                   unsigned int const& P_3,                           // number of permutations when p < 0.01
+                                   unsigned int const& P_4,                           // number of permutations when p < 0.001
+                                   unsigned int const& N_breaks,                      // number of breaks at which to evaluate the cdf
+                                   arma::vec const& sample_ids,                             // ids of samples for every cell
+                                   unsigned int const& n_samples,                     // total number of samples
+                                   arma::vec const& group_ids_of_samples,                   // ids of groups (1 or 2) for every sample
+                                   double const& min_non_zero_cells,                  // min number of cells with > 0 expression in each cluster to consider the gene for testing
+                                   arma::sp_mat const& counts,
+                                   arma::mat& design) // design, excluding group
 {
   arma::colvec y, coef, residuals; // colvectors needed to compute lm residuals
   
@@ -465,42 +467,42 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
       
       // run 100 permutations on all gene-cluster combinations
       tmp_res = 1 + perm_one_gene_covariates_parallel(breaks, 
-                                  cdf_A, 
-                                  cdf_B,
-                                  n_samples,
-                                  sample_has_cells,
-                                  sample_ids,
-                                  counts_one_gene,
-                                  group_ids_of_samples,
-                                  N_breaks,
-                                  n_samples_A,
-                                  n_samples_B,
-                                  T_perm,
-                                  P,
-                                  n_cells,
-                                  PERM,
-                                  T_obs);
+                                                      cdf_A, 
+                                                      cdf_B,
+                                                      n_samples,
+                                                      sample_has_cells,
+                                                      sample_ids,
+                                                      counts_one_gene,
+                                                      group_ids_of_samples,
+                                                      N_breaks,
+                                                      n_samples_A,
+                                                      n_samples_B,
+                                                      T_perm,
+                                                      P,
+                                                      n_cells,
+                                                      PERM,
+                                                      T_obs);
       
       p_val = (1.0 * tmp_res)/( P + 1.0 );
       
       if( p_val <= 0.1 ){ // if p_val < 0.1, use 10 * perm
         if(P_2 > P){
           tmp_res += perm_one_gene_covariates_parallel(breaks, 
-                                   cdf_A, 
-                                   cdf_B,
-                                   n_samples,
-                                   sample_has_cells,
-                                   sample_ids,
-                                   counts_one_gene,
-                                   group_ids_of_samples,
-                                   N_breaks,
-                                   n_samples_A,
-                                   n_samples_B,
-                                   T_perm_2, // 2nd T_perm_2
-                                   P_2 - P,  // 2nd P = (P_2 - P)
-                                   n_cells,
-                                   PERM_2,    // 2nd PERM
-                                   T_obs);
+                                                       cdf_A, 
+                                                       cdf_B,
+                                                       n_samples,
+                                                       sample_has_cells,
+                                                       sample_ids,
+                                                       counts_one_gene,
+                                                       group_ids_of_samples,
+                                                       N_breaks,
+                                                       n_samples_A,
+                                                       n_samples_B,
+                                                       T_perm_2, // 2nd T_perm_2
+                                                       P_2 - P,  // 2nd P = (P_2 - P)
+                                                       n_cells,
+                                                       PERM_2,    // 2nd PERM
+                                                       T_obs);
           
           p_val = (1.0 * tmp_res)/( P_2 + 1.0 );
         }
@@ -508,21 +510,21 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
         if( p_val <= 0.01 ){ // if p_val < 0.01, use 100 * perm
           if(P_3 > P_2){
             tmp_res += perm_one_gene_covariates_parallel(breaks, 
-                                     cdf_A, 
-                                     cdf_B,
-                                     n_samples,
-                                     sample_has_cells,
-                                     sample_ids,
-                                     counts_one_gene,
-                                     group_ids_of_samples,
-                                     N_breaks,
-                                     n_samples_A,
-                                     n_samples_B,
-                                     T_perm_3,  // 3rd T_perm_3
-                                     P_3 - P_2, // 3rd P = P_3-(P_2)
-                                     n_cells,
-                                     PERM_3,    // 2nd PERM
-                                     T_obs);
+                                                         cdf_A, 
+                                                         cdf_B,
+                                                         n_samples,
+                                                         sample_has_cells,
+                                                         sample_ids,
+                                                         counts_one_gene,
+                                                         group_ids_of_samples,
+                                                         N_breaks,
+                                                         n_samples_A,
+                                                         n_samples_B,
+                                                         T_perm_3,  // 3rd T_perm_3
+                                                         P_3 - P_2, // 3rd P = P_3-(P_2)
+                                                         n_cells,
+                                                         PERM_3,    // 2nd PERM
+                                                         T_obs);
             
             p_val = (1.0 * tmp_res)/( P_3 + 1.0 );
           }
@@ -530,21 +532,21 @@ List perm_test_parallel_covariates(unsigned int const& P,                       
           if( p_val <= 0.001 ){ // if p_val < 0.001, use 1,000 * perm
             if(P_4 > P_3){
               tmp_res += perm_one_gene_covariates_parallel(breaks, 
-                                       cdf_A, 
-                                       cdf_B,
-                                       n_samples,
-                                       sample_has_cells,
-                                       sample_ids,
-                                       counts_one_gene,
-                                       group_ids_of_samples,
-                                       N_breaks,
-                                       n_samples_A,
-                                       n_samples_B,
-                                       T_perm_4,  // 3rd T_perm_3
-                                       P_4 - P_3, // 3rd P = P_3-(P_2)
-                                       n_cells,
-                                       PERM_4,    // 2nd PERM
-                                       T_obs);
+                                                           cdf_A, 
+                                                           cdf_B,
+                                                           n_samples,
+                                                           sample_has_cells,
+                                                           sample_ids,
+                                                           counts_one_gene,
+                                                           group_ids_of_samples,
+                                                           N_breaks,
+                                                           n_samples_A,
+                                                           n_samples_B,
+                                                           T_perm_4,  // 3rd T_perm_3
+                                                           P_4 - P_3, // 3rd P = P_3-(P_2)
+                                                           n_cells,
+                                                           PERM_4,    // 2nd PERM
+                                                           T_obs);
               
               p_val = (1.0 * tmp_res)/( P_4 + 1.0 );
             }
