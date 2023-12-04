@@ -1,3 +1,6 @@
+Changes in version 1.14.5:
++ Linux Rfast BUILD error solved
+
 Changes in version 1.14.2:
 + Updated from C++11 to C++17
 

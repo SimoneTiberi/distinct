@@ -1,19 +1,9 @@
 #include <RcppArmadillo.h>
-#include <RcppParallel.h>
-#include "Rfast.h"
 #include <cmath>
 // [[Rcpp::plugins(cpp17)]]
 // [[Rcpp::depends(RcppArmadillo)]]
-// [[Rcpp::depends(Rfast)]]
-// [[Rcpp::depends(RcppParallel)]]
-using namespace arma;
 using namespace Rcpp;
-using namespace Rfast;
-using namespace RcppParallel;
-
-// wrapper around R's RNG such that we get a uniform distribution over
-// [0,n) as required by the STL algorithm
-// inline int randWrapper(const int n) { return floor(unif_rand()*n); }
+using namespace arma;
 
 unsigned int perm_one_gene_covariates(arma::vec const& breaks, 
                                       arma::mat& cdf_A, 
@@ -122,122 +112,11 @@ unsigned int perm_one_gene_covariates(arma::vec const& breaks,
   return res;
 }
 
-// Author of the function below: Stefanos Fafalios, taken from Rfast CRAN package
-double calc_f(vec nix, double n, vec ni2hi2, double S, double x, int size){
-  double sum1 = 0.0, sum2 = 0.0;
-  
-  for(int i = 0; i < size; i++){
-    sum1+=log1p(nix[i]);
-    sum2+=ni2hi2[i]/(1+nix[i]);
-  }
-  
-  return sum1+n*log(S-x*sum2);
-}
-
-// Author of the function below: Stefanos Fafalios, taken from Rfast CRAN package
-vec gold_rat3(double n, vec ni, vec ni2, double S, vec hi2,const int size, const double tol=1e-07){
-  double a = 0, b = 50;
-  const double ratio=0.618033988749895;
-  double x1=b-ratio*b, x2=ratio*b;
-  vec nix1 = ni*x1, nix2 = ni*x2, ni2hi2 = ni2%hi2;
-  
-  double f1 = calc_f(nix1, n, ni2hi2, S, x1, size);
-  double f2 = calc_f(nix2, n, ni2hi2, S, x2, size);
-  double bmina = b - a;
-  while (abs(bmina)>tol){
-    if(f2>f1){
-      b=x2;
-      bmina = b - a;
-      x2=x1;
-      f2=f1;
-      x1=b - ratio * (bmina);
-      nix1 = ni*x1;
-      f1 = calc_f(nix1, n, ni2hi2, S, x1, size);
-    }
-    else {
-      a=x1;
-      bmina = b - a;
-      x1=x2;
-      f1=f2;
-      x2=a + ratio * (bmina);
-      nix2 = ni*x2;
-      f2 = calc_f(nix2, n, ni2hi2, S, x2, size);
-    }
-  }
-  vec ret(2);
-  ret(0) = 0.5*(x1+x2);
-  ret(1) = (f1+f2)/2;
-  
-  return ret;
-}
-
-// Author of the function below: Stefanos Fafalios, taken from Rfast CRAN package
-vec my_rint_reg(arma::mat const& x, 
-                arma::vec const& y,
-                Rcpp::IntegerVector id, 
-                unsigned int const& n,
-                unsigned int const& p,
-                double const& tol,
-                unsigned int const& maxiters){
-  // do these bits once only in every cluster of cells, not n_genes times!
-  int idmx,idmn;
-  maximum<int>(id.begin(),id.end(),idmx);
-  minimum<int>(id.begin(),id.end(),idmn);
-  mat xx(p,p),sx(idmx,p),sxy(p,1),mx(idmx,p);
-  vec my(idmx);
-  
-  vec ni=Tabulate<vec,IntegerVector>(id,idmx);
-  
-  xx = cross_x<mat,mat>(x);
-  unsigned int i;
-  for(i=0;i<p;i++)
-    sx.col(i) = group_sum_helper<vec,vec,IntegerVector>(x.col(i), id, &idmn,&idmx);
-  sxy = cross_x_y<mat,mat,vec>(x,y);
-  colvec sy = group_sum_helper<colvec,vec,IntegerVector>(y, id, &idmn,&idmx);
-  mx = sx.each_col()/ni;
-  my = sy/ni;
-  
-  mat b1 = solve(xx,sxy,solve_opts::fast);
-  vec tmp = y - x*b1;
-  double S = sum_with<square2<double>, vec>(tmp);
-  vec tmp2 = my-mx*b1;
-  vec hi2 = tmp2%tmp2;
-  vec ni2 = ni%ni;
-  
-  vec d(2);
-  d = gold_rat3(n, ni, ni2, S, hi2,idmx, tol);
-  vec oneplnid = 1+ni*d(0);
-  vec b2 = solve(xx - d(0)* cross_x_y<mat,mat,vec>(sx.each_col()/oneplnid, sx), sxy -
-    d(0) * cross_x_y<mat,mat,vec>(sx, sy/oneplnid),solve_opts::fast);
-  i = 2;
-  
-  while(i++<maxiters && sum(abs(b2-b1.col(0))) > tol) {
-    b1.col(0) = b2;
-    
-    tmp = y - x*b1;
-    S = sum_with<square2<double>, vec>(tmp);
-    tmp2 = my-mx*b1;
-    hi2 = tmp2%tmp2;
-    
-    d = gold_rat3(n, ni, ni2, S, hi2,idmx, tol);
-    oneplnid = 1+ni*d(0);
-    b2 = solve(xx - d(0) * cross_x_y<mat,mat,vec>(sx.each_col()/oneplnid, sx), sxy -
-      d(0) * cross_x_y<mat,mat,vec>(sx, sy/oneplnid),solve_opts::fast);
-  }
-  
-  return b2;
-}
-
 arma::vec my_residuals(arma::mat const& X, 
-                       arma::vec const& Y,
-                       Rcpp::IntegerVector const& id, 
-                       unsigned int const& n, 
-                       unsigned int const& p, 
-                       double const& tol,
-                       unsigned int const& maxiters){
-  vec coef = my_rint_reg( X, Y, id, n, p, tol, maxiters);
+                       arma::vec const& Y){
+  arma::colvec coef = arma::solve(X, Y);
   
-  vec res;
+  arma::vec res;
   res = Y - X * coef;
   return res;
 } 
@@ -397,7 +276,7 @@ List perm_test_covariates(unsigned int const& P,                             // 
       /* */
       if (s >= min_non_zero_cells) {
         // residuals:
-        counts_one_gene = my_residuals(X_design, counts_one_gene, sample_ids_one_cl_vec, n_cells, K, 1e-08, 100);
+        counts_one_gene = my_residuals(X_design, counts_one_gene);
         
         /* CDF grid */ 
         mn = counts_one_gene.min();

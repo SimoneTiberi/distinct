@@ -1,7 +1,7 @@
 Package: distinct
 Type: Package
 Title: distinct: a method for differential analyses via hierarchical permutation tests
-Version: 1.14.4
+Version: 1.14.5
 Author: Simone Tiberi [aut, cre].
 Maintainer: Simone Tiberi <simone.tiberi@uzh.ch>
 Description: distinct is a statistical method to perform differential testing between two or more groups of distributions; 
@@ -20,9 +20,9 @@ biocViews: Genetics,
   SingleCell, FlowCytometry, GeneTarget
 License: GPL (>= 3)
 Depends: R (>= 4.3)
-Imports: Rcpp, Rfast, RcppParallel, stats, SummarizedExperiment, SingleCellExperiment, methods, Matrix, foreach, parallel, doParallel, doRNG, ggplot2, limma, scater
+Imports: Rcpp, stats, SummarizedExperiment, SingleCellExperiment, methods, Matrix, foreach, parallel, doParallel, doRNG, ggplot2, limma, scater
 Suggests: knitr, rmarkdown, testthat, UpSetR, BiocStyle
-LinkingTo: Rcpp, RcppArmadillo, Rfast, RcppParallel
+LinkingTo: Rcpp, RcppArmadillo
 SystemRequirements: C++17
 VignetteBuilder: knitr
 RoxygenNote: 7.2.3
