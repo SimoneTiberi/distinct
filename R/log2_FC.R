@@ -12,6 +12,7 @@
 #' indicating the name of the colData(x) element which stores the group id of each cell (i.e., colData(x)$name_group).
 #' @param name_cluster a character ("cluster_id" by default), 
 #' indicating the name of the colData(x) element which stores the cluster id of each cell (i.e., colData(x)$name_cluster).
+#' @param pseudo_count average count to be added to each observation to avoid taking log of zero when computing FCs. Default is 0 (backward compatible).
 #' @return A \code{\linkS4class{data.frame}} object, extending the results in `res`.
 #' Two additional columns are added: FC_group1/group2 and log2FC_group1/group2, inicating the FC and log2-FC of group1/group2.
 #' A FC > 1 (or log2FC > 0) indicates up-regulation of group1 (compared to group2); while a FC < 1 (or log2FC < 0) indicates down-regulation of group1 (compared to group2).
@@ -36,18 +37,20 @@
 #' @seealso \code{\link{distinct_test}}, \code{\link{top_results}}
 #' 
 #' @export
-log2_FC = function(res, 
-                   x, 
+log2_FC = function(res,
+                   x,
                    name_assays_expression = "cpm",
                    name_group = "group_id",
-                   name_cluster = "cluster_id"
+                   name_cluster = "cluster_id",
+                   pseudo_count = 0
 ){
   stopifnot(
     is.data.frame(res),
     ( is(x, "SummarizedExperiment") | is(x, "SingleCellExperiment") ),
     is.character(name_assays_expression), length(name_assays_expression) == 1L,
     is.character(name_group), length(name_group) == 1L,
-    is.character(name_cluster), length(name_cluster) == 1L
+    is.character(name_cluster), length(name_cluster) == 1L,
+    is.numeric(pseudo_count), length(pseudo_count) == 1L, pseudo_count >= 0
   )
   
   # check if FC/log2_FC are already present in res:
@@ -127,7 +130,8 @@ log2_FC = function(res,
   FC_by_cluster = lapply(seq_along(cluster_levels), function(i){
     exp_1 = pb_1[,i]
     exp_2 = pb_2[,i]
-    FC = exp_1/exp_2
+    # add pseudo_count to avoid division by zero when computing FCs
+    FC = (exp_1 + pseudo_count)/(exp_2 + pseudo_count)
     log2_FC = log2(FC)
     
     cbind( cluster_num = i, gene_num = seq_len(n_genes), exp_1, exp_2, FC, log2_FC)
